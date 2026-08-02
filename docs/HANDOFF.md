@@ -17,9 +17,8 @@ design depends on it.
 Phase 0 (LOM introspection) was completed 2026-08-02: `tools/introspect/` dumps the LOM
 from inside Live (12.4.3, embedded Python 3.11.6) to `docs/lom-raw.json`, and
 `tools/render_inventory.py` renders `docs/lom-inventory.md` from it. Phase 1 produced
-`docs/CONTRACT.md` (2026-08-02, version 1.0-draft): wire protocol and tool catalogue,
-awaiting the user's review before freezing. The next action is that review, then
-Phase 2. The user works on macOS with Ableton Live 12.4.3 Suite and has
+`docs/CONTRACT.md`, frozen as 1.0 on 2026-08-02 after user review. Phase 2 (the real
+Remote Script, `remote_script/Alberton/`) is in progress. The user works on macOS with Ableton Live 12.4.3 Suite and has
 the existing `ableton-mcp` 1.2.0 installed and working, which is useful as a reference
 implementation and as a fallback while this project is incomplete.
 

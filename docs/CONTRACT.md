@@ -1,9 +1,10 @@
 # Contract — wire protocol and MCP tool catalogue
 
-Version 1.0-draft · 2026-08-02 · Designed against `docs/lom-inventory.md` (Live 12.4.3,
-embedded Python 3.11.6). Decisions of record: subscriptions ship in v1; the generic LOM
-escape hatches are exposed to the model for read and write; v1 write scope is
-Session-first (Arrangement-native writing is v1.1).
+Version 1.0 — frozen 2026-08-02 after user review. Designed against
+`docs/lom-inventory.md` (Live 12.4.3, embedded Python 3.11.6). Decisions of record:
+subscriptions ship in v1; the generic LOM escape hatches are exposed to the model for
+read and write; v1 write scope is Session-first (Arrangement-native writing is v1.1).
+Changes to Layer A from here on require a version bump and a migration note.
 
 Layer A is what the Remote Script speaks. It is intentionally small and generic: adding
 a musical capability must never require touching it. Layer B is the MCP tool catalogue
