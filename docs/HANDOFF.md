@@ -16,8 +16,10 @@ design depends on it.
 
 Phase 0 (LOM introspection) was completed 2026-08-02: `tools/introspect/` dumps the LOM
 from inside Live (12.4.3, embedded Python 3.11.6) to `docs/lom-raw.json`, and
-`tools/render_inventory.py` renders `docs/lom-inventory.md` from it. The next action is
-Phase 1 (the contract). The user works on macOS with Ableton Live 12.4.3 Suite and has
+`tools/render_inventory.py` renders `docs/lom-inventory.md` from it. Phase 1 produced
+`docs/CONTRACT.md` (2026-08-02, version 1.0-draft): wire protocol and tool catalogue,
+awaiting the user's review before freezing. The next action is that review, then
+Phase 2. The user works on macOS with Ableton Live 12.4.3 Suite and has
 the existing `ableton-mcp` 1.2.0 installed and working, which is useful as a reference
 implementation and as a fallback while this project is incomplete.
 
@@ -150,13 +152,18 @@ Do not let hypothetical community preferences distort design choices.
 - Exact shape of the generic operation set. Candidate: `get`, `set`, `call`, `get_notes`,
   `set_notes`, `batch`, `subscribe`, `unsubscribe` over dotted paths such as
   `song.tracks.3.clip_slots.2.clip`. Needs a written contract before implementation.
+  — Resolved 2026-08-02: eleven ops specified in `docs/CONTRACT.md` §A.6.
 - How far to go with listeners in v1. They are the highest-value capability and also the
   most complex (lifecycle, unsubscription, backpressure). Possibly defer to v2.
+  — Decided by the user 2026-08-02: v1, with coalesce-on-tick backpressure and
+  overflow/gone events (CONTRACT §A.6) and pull-based surfacing over MCP (§B.6).
 - Project name. Should not imply endorsement by Ableton. — Resolved 2026-08-02:
   "Alberton MCP for Live", with a not-affiliated disclaimer in the README.
 - Licence for this project (MIT is the obvious default given the ecosystem). — Resolved
   2026-08-02: MIT.
 - Whether the server should ship a browser index cache and how it is invalidated.
+  — Narrowed 2026-08-02: v1 rebuilds on demand / on server start (CONTRACT, out-of-scope
+  list); smarter invalidation stays open.
 
 ---
 
