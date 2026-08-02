@@ -17,8 +17,11 @@ design depends on it.
 Phase 0 (LOM introspection) was completed 2026-08-02: `tools/introspect/` dumps the LOM
 from inside Live (12.4.3, embedded Python 3.11.6) to `docs/lom-raw.json`, and
 `tools/render_inventory.py` renders `docs/lom-inventory.md` from it. Phase 1 produced
-`docs/CONTRACT.md`, frozen as 1.0 on 2026-08-02 after user review. Phase 2 (the real
-Remote Script, `remote_script/Alberton/`) is in progress. The user works on macOS with Ableton Live 12.4.3 Suite and has
+`docs/CONTRACT.md`, frozen as 1.0 on 2026-08-02 after user review. Phase 2 was
+completed 2026-08-03: the bridge (`remote_script/Alberton/`, v0.1.1) passes all 34
+checks of the contract probe (`tools/wire_probe.py`) against a live instance —
+including atomic batch rollback and subscription change events. The next action is
+Phase 3 (the MCP server). The user works on macOS with Ableton Live 12.4.3 Suite and has
 the existing `ableton-mcp` 1.2.0 installed and working, which is useful as a reference
 implementation and as a fallback while this project is incomplete.
 
@@ -209,6 +212,15 @@ produce duplicate Control Surface entries and a port conflict. **[verified — t
 Live only scans Remote Scripts at startup, so installing a script while Live is open does
 nothing until restart. A missing Control Surface selection in Preferences → Link, Tempo &
 MIDI is the second most common cause of "it does not connect".
+
+`Song.tempo` quantizes to float32 (write 123.45, read back 123.44999694824219), so
+read-back comparisons need a tolerance there. Note times, in contrast, round-trip in
+float64 bit-exactly — verified with 1/3 triplet floats. **[verified 2026-08-03]**
+
+`Song.undo()` called in the same main-thread slice as `end_undo_step()` does not yet
+see that step in the undo history; one tick later it does. Batch rollback must
+therefore be deferred to the next tick — the bridge does this and only then sends the
+batch response. **[verified 2026-08-03 — this bit us]**
 
 The user has an existing `ableton-mcp` install pinned to `mcp[cli]==1.28.1` in
 `claude_desktop_config.json`. Leave it working; this project should be developed alongside
