@@ -14,9 +14,11 @@ design depends on it.
 
 ## 1. Where we are
 
-Nothing has been built yet. The decisions below are settled; the next action is Phase 0
-(LOM introspection). The user works on macOS with Ableton Live 12.4.3 Suite and has the
-existing `ableton-mcp` 1.2.0 installed and working, which is useful as a reference
+Phase 0 (LOM introspection) was completed 2026-08-02: `tools/introspect/` dumps the LOM
+from inside Live (12.4.3, embedded Python 3.11.6) to `docs/lom-raw.json`, and
+`tools/render_inventory.py` renders `docs/lom-inventory.md` from it. The next action is
+Phase 1 (the contract). The user works on macOS with Ableton Live 12.4.3 Suite and has
+the existing `ableton-mcp` 1.2.0 installed and working, which is useful as a reference
 implementation and as a fallback while this project is incomplete.
 
 ---
@@ -72,7 +74,8 @@ A full reference lives in the packaged skill `ableton-mcp-guia` and in the PDF
 *AbletonMCP — Referència completa* produced in the same session.
 
 Capabilities believed to exist in the LOM but not exposed by the current tool
-— **all [unverified], to be confirmed in Phase 0**:
+— all [unverified] when written; **Phase 0 (2026-08-02) confirmed every item on this
+list**, with exact signatures in `docs/lom-inventory.md`:
 
 - `ClipSlot.delete_clip`, `Song.delete_track`, `Song.duplicate_track`,
   `Song.create_audio_track`, `Song.create_return_track`
@@ -86,6 +89,12 @@ Capabilities believed to exist in the LOM but not exposed by the current tool
 - Clip automation envelopes
 - Property listeners (`add_*_listener`) — push notification of changes instead of polling
 - Live 12 scale awareness (`Song.scale_name`, `root_note`)
+
+Noteworthy details from the verification: `Clip.add_new_notes((object)) -> IntU64Vector`
+returns the new notes' ids; `MidiNote` carries `note_id`, `probability`,
+`velocity_deviation`, `release_velocity`; `Song.undo()`/`redo()` return a `str`;
+`Scene.fire` takes `force_legato` and `can_select_scene_on_launch` keywords;
+`Song.scale_name` and `root_note` are read-write and both have listeners.
 
 The listener capability is the most architecturally significant: it changes the
 interaction model from "the model asks" to "Live tells", which is what would let the
@@ -135,7 +144,9 @@ Do not let hypothetical community preferences distort design choices.
 ## 5. Open questions
 
 - Does the LOM allow setting Live 12's tuning/scale programmatically? Irrelevant under the
-  TET 12 decision, but worth recording in the inventory.
+  TET 12 decision, but worth recording in the inventory. — Answered in Phase 0: scale yes
+  (`Song.scale_name`, `root_note`, `scale_mode` are RW with listeners); tuning partially
+  (`Song.tuning_system` is read-only, though the active `TuningSystem`'s fields are RW).
 - Exact shape of the generic operation set. Candidate: `get`, `set`, `call`, `get_notes`,
   `set_notes`, `batch`, `subscribe`, `unsubscribe` over dotted paths such as
   `song.tracks.3.clip_slots.2.clip`. Needs a written contract before implementation.

@@ -12,5 +12,8 @@ dist/
 # macOS
 .DS_Store
 
+# Runtime artifacts of the Phase 0 introspector
+docs/lom-introspect.log
+
 # Claude Code (personal overrides)
 .claude/settings.local.json
