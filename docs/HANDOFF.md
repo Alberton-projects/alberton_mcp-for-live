@@ -232,6 +232,19 @@ see that step in the undo history; one tick later it does. Batch rollback must
 therefore be deferred to the next tick — the bridge does this and only then sends the
 batch response. **[verified 2026-08-03 — this bit us]**
 
+`DeviceParameter.is_quantized` means "has named discrete values" (Operator's Algorithm),
+**not** "accepts only whole numbers". Others round silently anyway — Transpose takes
+semitones over −48..48 with `is_quantized` false. So whether a written shape survived is
+answered by reading it back, never by the flag; `automate_parameter` reports a `snapped`
+boolean derived from the read-back for exactly this reason. **[verified 2026-08-03]**
+
+Firing a Session clip starts the transport, and `stop_clip` does not stop it. A position
+written to a rolling transport has already advanced by the time it is read back — not a
+clamp, just time passing. **[verified 2026-08-03]**
+
+`Song.is_playing` is writable: setting it starts and stops playback. Do not reach for it
+as an example of a read-only property. **[verified 2026-08-03]**
+
 Scale, measured on a real 29-track, 180-scene, 368-clip set (`tools/scale_report.py`,
 read-only) **[verified 2026-08-03]**: a wire round trip costs ~200 ms regardless of
 payload, because the script services its inbox on a ~100 ms tick — so latency, not work,

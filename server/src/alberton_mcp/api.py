@@ -957,8 +957,12 @@ async def transport(session, action=None, position=None):
     await _run_atomic(session.bridge, ops, "transport")
     result = await session.bridge.request(
         "get", path="song", props=["is_playing", "current_song_time"])
-    return {"is_playing": result["values"]["is_playing"],
-            "position": result["values"]["current_song_time"]}
+    out = {"is_playing": result["values"]["is_playing"],
+           "position": result["values"]["current_song_time"]}
+    if position is not None and out["is_playing"]:
+        out["note"] = ("the transport is rolling, so the position read back "
+                       "has already advanced past the one that was set")
+    return out
 
 
 # --- tracks ------------------------------------------------------------------------
@@ -1390,7 +1394,8 @@ async def automate_parameter(session, clip, device, parameter, points,
                                               device)
     param_ref = await resolve.resolve_parameter(bridge, device_ref["path"],
                                                 parameter)
-    bounds = await _gets(bridge, [(param_ref["path"], ["min", "max", "name"])])
+    bounds = await _gets(bridge, [(param_ref["path"],
+                                   ["min", "max", "name", "is_quantized"])])
     bounds = bounds[0] or {}
     lo = bounds.get("min", 0.0)
     hi = bounds.get("max", 1.0)
@@ -1435,10 +1440,23 @@ async def automate_parameter(session, clip, device, parameter, points,
                                       method="value_at_time", args=[at])
         verified.append({"time": at, "value": result.get("value"),
                          "wrote": expected})
-    return {"parameter": bounds.get("name"), "device": device_ref["path"],
-            "envelope": envelope_path, "steps": len(steps),
-            "range": {"min": lo, "max": hi}, "mode": mode,
-            "resolution": resolution, "read_back": verified}
+    # Whether the shape survived is answered by the read-back, not by
+    # is_quantized: that flag means "has named discrete values" (Operator's
+    # Algorithm), while others round silently anyway (Transpose, in
+    # semitones over -48..48). Verified 2026-08-03.
+    snapped = any(abs(probe["value"] - probe["wrote"]) > 1e-6
+                  for probe in verified if probe["value"] is not None)
+    out = {"parameter": bounds.get("name"), "device": device_ref["path"],
+           "envelope": envelope_path, "steps": len(steps),
+           "range": {"min": lo, "max": hi}, "mode": mode,
+           "quantized": bool(bounds.get("is_quantized")),
+           "snapped": snapped,
+           "resolution": resolution, "read_back": verified}
+    if snapped:
+        out["note"] = ("this parameter does not take every value in its "
+                       "range, so the shape landed on the nearest ones it "
+                       "accepts — read_back is what Live kept")
+    return out
 
 
 async def clear_automation(session, clip, device=None, parameter=None):

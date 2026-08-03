@@ -51,7 +51,12 @@ With Live open, from the repository root:
 python3 tools/wire_probe.py         # 34 checks: the bridge against CONTRACT 1.0
 python3 tools/live_verify.py        # 23 checks: the tools, end to end
 python3 tools/lifecycle_probe.py    # 23 checks: dropped connections, garbage, churn
+python3 tools/functional_suite.py   # 51 checks: every tool, plus a coverage report
+python3 tools/scale_report.py       # read-only: what your set costs to read
 ```
+
+`functional_suite.py` finishes by listing any tool it never called, so coverage is
+measured rather than claimed.
 
 `lifecycle_probe.py --manual` adds the checks that need Live restarted or the
 Control Surface toggled; it prompts for each step. All three leave the set as
