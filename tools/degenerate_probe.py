@@ -250,19 +250,58 @@ async def main():
         groups = [t for t in overview["tracks"] if t["type"] == "group"]
         if groups:
             group = await api.get_track(session, track=groups[0]["index"])
+            # arm is null on a group: Live has nothing to arm there
             run.check("a group track reads as a group",
-                      group["type"] == "group", json.dumps(group)[:200])
+                      group["type"] == "group" and group["arm"] is None,
+                      json.dumps(group)[:200])
+            props = await api.lom_get(session, path=group["path"],
+                                      props=["is_foldable", "fold_state",
+                                             "can_be_armed"])
+            run.check("a group folds and cannot be armed",
+                      props["values"]["is_foldable"] is True
+                      and props["values"]["can_be_armed"] is False,
+                      json.dumps(props["values"]))
+            children = [t for t in overview["tracks"]
+                        if t["index"] > groups[0]["index"]]
+            if children:
+                child = await api.lom_get(
+                    session, path="song.tracks.%d" % children[0]["index"],
+                    props=["is_grouped", "group_track"])
+                stub = child["values"].get("group_track") or {}
+                run.check("a grouped child points at its parent by identity",
+                          child["values"]["is_grouped"] is True
+                          and isinstance(stub.get("$obj", {}).get("ptr"), int),
+                          json.dumps(child["values"])[:200])
         else:
             run.skip("group track", "none in this set, and Live exposes no way "
                                     "to create one from the LOM (Cmd-G by hand)")
-        frozen = await api.lom_get(session, path="song.tracks.%d" % index,
-                                   props=["is_frozen", "can_be_frozen"])
+        frozen = [t for t in overview["tracks"] if t.get("frozen")]
+        if frozen:
+            target = frozen[0]["index"]
+            notes = await api.get_notes(session,
+                                        clip={"track": target, "slot": 0},
+                                        summary=True)
+            run.check("a frozen track still reads", notes["summary"]["count"] >= 0,
+                      json.dumps(notes)[:200])
+            await refuses(run, "creating a clip on a frozen track is refused",
+                          api.create_clip(session, track=target, slot=6,
+                                          length=4.0, name="nope"))
+            written = await api.edit_notes(
+                session, clip={"track": target, "slot": 0},
+                add=[{"pitch": 60, "start": 0.0, "duration": 0.25}])
+            run.check("writing notes to a frozen clip warns that it is silent",
+                      "unfrozen" in written.get("warning", ""),
+                      json.dumps(written))
+            await api.edit_notes(session, clip={"track": target, "slot": 0},
+                                 remove_ids=written["added_ids"])
+        else:
+            run.skip("frozen track", "none in this set; Live exposes no freeze "
+                                     "method, so freeze one by hand to cover it")
+        state = await api.lom_get(session, path="song.tracks.%d" % index,
+                                  props=["is_frozen", "can_be_frozen"])
         run.check("freeze state is readable even though it cannot be set",
-                  frozen["values"]["is_frozen"] is False,
-                  json.dumps(frozen))
-        run.skip("frozen track behaviour", "Live exposes no freeze method; "
-                                           "freeze one by hand to test writes "
-                                           "against it")
+                  state["values"]["is_frozen"] is False,
+                  json.dumps(state))
 
         # -------------------------------------------------------------- health
         ping = await api.session_overview(session, detail="minimal")

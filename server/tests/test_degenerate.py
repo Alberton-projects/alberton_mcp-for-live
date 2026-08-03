@@ -72,3 +72,35 @@ async def test_a_set_with_tracks_but_no_scenes(fake, session):
     with pytest.raises(ToolError) as excinfo:
         await api.create_clip(session, track=0, slot=0, length=4.0, name="x")
     assert "no Session slots" in excinfo.value.hint
+
+
+# --- frozen tracks --------------------------------------------------------------
+
+
+async def test_writing_notes_to_a_frozen_track_warns(fake, session):
+    """Live's LOM allows it although its UI locks the clip, and the rendered
+    audio does not change — so success without a word would mislead.
+    Verified against Live 12.4.3."""
+    await api.create_clip(session, track=0, slot=0, length=4.0, name="c")
+    fake.live.song["tracks"][0]["is_frozen"] = True
+    result = await api.edit_notes(session, clip={"track": 0, "slot": 0},
+                                  add=[{"pitch": 60, "start": 0.0,
+                                        "duration": 0.5}])
+    assert result["counts"]["added"] == 1        # it really was written
+    assert "unfrozen" in result["warning"]
+
+
+async def test_no_warning_on_a_normal_track(fake, session):
+    await api.create_clip(session, track=0, slot=0, length=4.0, name="c")
+    result = await api.edit_notes(session, clip={"track": 0, "slot": 0},
+                                  add=[{"pitch": 60, "start": 0.0,
+                                        "duration": 0.5}])
+    assert "warning" not in result
+
+
+async def test_overview_and_get_track_report_frozen(fake, session):
+    fake.live.song["tracks"][1]["is_frozen"] = True
+    overview = await api.session_overview(session, detail="standard")
+    assert overview["tracks"][1]["frozen"] is True
+    assert "frozen" not in overview["tracks"][0]     # only when it is true
+    assert (await api.get_track(session, track=1))["frozen"] is True

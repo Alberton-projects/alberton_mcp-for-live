@@ -27,12 +27,12 @@ in HANDOFF, the *spec* in CONTRACT.
 
 | Suite | Needs Live | Checks |
 |---|---|---|
-| `server/tests/` (pytest) | no | 107 |
+| `server/tests/` (pytest) | no | 110 |
 | `tools/wire_probe.py` | yes | 36 |
 | `tools/live_verify.py` | yes | 23 |
 | `tools/lifecycle_probe.py` | yes | 23 (+4 manual) |
 | `tools/functional_suite.py` | yes | 51, and **46/46 tools exercised** |
-| `tools/degenerate_probe.py` | yes | 43 (+2 need a human) |
+| `tools/degenerate_probe.py` | yes | 46 (group and frozen coverage runs when the set has them) |
 | `tools/limits_probe.py` | yes | 15 — batch, note and subscription ceilings, overflow |
 | `tools/stress_probe.py` | yes | measurement under concurrent human use |
 | `tools/scale_report.py` | yes | read-only measurement, no assertions |
@@ -55,7 +55,7 @@ Ordered by what a stranger would hit first.
 2. **Level 3, portability** — only Live 12.4.3 Suite on macOS has ever been tested.
    Either test Live 11 / other 12.x / Windows, or state the supported scope in the
    README and promise nothing more.
-3. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
+2. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
    this last, once the README has stopped moving.
 
 ## Open — undecided
@@ -67,6 +67,16 @@ Ordered by what a stranger would hit first.
 ---
 
 ## Log
+
+### 2026-08-03 — group and frozen tracks
+
+- `0062a75` **The two states the LOM cannot create**, made by hand and then probed. Groups
+  read correctly and their children point at the parent by identity — both children
+  return the same `ptr` from different paths, contract 1.1 paying off the day it
+  shipped. Frozen tracks refuse clip creation but **accept note writes**, which Live's
+  own UI forbids: the note lands, the audio does not change, and the caller was told
+  nothing. `edit_notes` now asks about the freeze inside the batch it already sends and
+  warns; `session_overview` and `get_track` mark frozen tracks.
 
 ### 2026-08-03 — bridge 0.2.0, contract 1.1
 

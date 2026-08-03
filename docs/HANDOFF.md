@@ -273,6 +273,23 @@ says only "All given IDs must be present in clip" — so the server reads the cl
 that failure and names the missing ones. Note ids are per clip and are not reused after
 a delete. **[verified 2026-08-03]**
 
+Frozen tracks, **[verified 2026-08-03]** on a track frozen by hand. Reads all work.
+`ClipSlot.create_clip` and `Track.create_midi_clip` refuse with "Clips cannot be created
+on frozen tracks". Mixer writes are allowed. But **`add_new_notes` on a clip of a frozen
+track succeeds and really writes the note** — Live's own UI locks that clip, its API does
+not, and the rendered audio does not change, so a caller gets success and hears nothing.
+The server now says so: `edit_notes` asks `is_frozen` inside the batch it was already
+sending (no extra round trip) and returns a warning, while `session_overview` and
+`get_track` report `frozen` on the tracks that are. A frozen track can be deleted.
+
+Group tracks, **[verified 2026-08-03]** on a group made by hand. The group reads as
+`is_foldable` with `fold_state` read-write, `can_be_armed` false and `arm` null, and it
+has clip slots of its own where `is_group_slot` and `controls_other_clips` are true.
+Children report `is_grouped` and a `group_track` stub — and both children's stubs carry
+the *same* `ptr` from different paths, which is contract 1.1 earning its keep on the day
+it shipped. `Song.delete_track` refuses to remove the last remaining member of a group
+("Couldn't delete track"); delete the group itself instead.
+
 Neither freezing nor grouping is exposed to the LOM: `is_frozen`, `can_be_frozen`,
 `is_grouped`, `is_foldable` and `group_track` are all read-only and there is no method to
 set them. Those two states can only be produced by hand in Live, so tests that need them

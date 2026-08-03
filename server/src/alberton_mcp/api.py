@@ -197,7 +197,7 @@ async def session_overview(session, detail="standard"):
                               % (scene_count - len(named), scene_count))
     track_props = ["name", "color", "has_midi_input", "has_audio_input",
                    "is_foldable", "mute", "solo", "can_be_armed",
-                   "clip_slots", "devices", "playing_slot_index"]
+                   "clip_slots", "devices", "playing_slot_index", "is_frozen"]
     track_values = await _gets(bridge, [("song.tracks.%d" % i, track_props)
                                         for i in range(track_count)])
     slot_probes = sum(_vec_length((v or {}).get("clip_slots"))
@@ -223,6 +223,8 @@ async def session_overview(session, detail="standard"):
         playing = _scalar(values.get("playing_slot_index"))
         if isinstance(playing, int) and playing >= 0:
             entry["playing_slot"] = playing
+        if _scalar(values.get("is_frozen")):
+            entry["frozen"] = True
         tracks.append(entry)
         if detail != "minimal":
             for d in range(_vec_length(values.get("devices"))):
@@ -307,6 +309,7 @@ async def get_track(session, track, detail="standard"):
                     "midi" if _scalar(p.get("has_midi_input")) else "audio"),
            "mute": _scalar(p.get("mute")), "solo": _scalar(p.get("solo")),
            "arm": _scalar(p.get("arm")),
+           "frozen": _scalar(p.get("is_frozen")),
            "can_be_armed": _scalar(p.get("can_be_armed"))}
     mixer = ref["path"] + ".mixer_device"
     send_count = 0
@@ -1132,6 +1135,12 @@ async def edit_notes(session, clip, add=None, update=None, remove_ids=None,
     params = {"clip": clip, "add": add, "update": update,
               "remove_ids": remove_ids, "remove_region": remove_region}
     ops = await _c_edit_notes(session, params)
+    # Live lets the LOM write notes into a clip on a frozen track even though
+    # its own UI locks them, and the rendered audio does not change — so the
+    # caller hears nothing and is told nothing. Ask in the same batch, which
+    # costs no extra round trip, and say so.
+    ref = await resolve.resolve_clip(session.bridge, clip)
+    ops = ops + [{"op": "get", "path": ref["track_path"], "props": ["is_frozen"]}]
     try:
         results = await _run_atomic(session.bridge, ops, "edit_notes")
     except ToolError as exc:
@@ -1148,7 +1157,13 @@ async def edit_notes(session, clip, add=None, update=None, remove_ids=None,
                                  "come from get_notes or from a previous add; "
                                  "they change when a note is deleted.")
         raise
-    return results[0].get("result") or {}
+    out = results[0].get("result") or {}
+    frozen = ((results[-1].get("result") or {}).get("values") or {}).get("is_frozen")
+    if frozen:
+        out["warning"] = ("this track is frozen: the notes were written, but "
+                          "Live plays its rendered audio, so nothing will "
+                          "sound different until the track is unfrozen")
+    return out
 
 
 async def quantize_clip(session, clip, grid, amount=1.0):

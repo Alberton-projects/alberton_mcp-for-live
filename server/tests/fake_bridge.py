@@ -25,7 +25,8 @@ def _track(name, midi=True, slots=4):
     return {
         "__class__": "Track", "name": name, "color": 0x808080,
         "has_midi_input": midi, "has_audio_input": not midi,
-        "is_foldable": False, "mute": False, "solo": False, "arm": False,
+        "is_foldable": False, "is_frozen": False, "is_grouped": False,
+        "mute": False, "solo": False, "arm": False,
         "can_be_armed": True, "playing_slot_index": -1,
         "clip_slots": [{"__class__": "ClipSlot", "has_clip": False,
                         "clip": None} for _ in range(slots)],
