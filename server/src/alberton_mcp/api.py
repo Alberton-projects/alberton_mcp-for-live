@@ -1212,10 +1212,13 @@ async def song_batch(session, calls, stop_on_error=True):
         try:
             ops = await compiler(session, call.get("params") or {})
         except ToolError as exc:
+            hint = "nothing was executed; fix the call and retry"
+            if exc.hint:
+                hint = "%s — %s" % (exc.hint, hint)
             raise ToolError(exc.code,
                             "calls[%d] (%s) failed to compile: %s"
                             % (index, tool, exc.message),
-                            hint="nothing was executed; fix the call and retry")
+                            hint=hint)
         compiled.append((tool, len(ops)))
         all_ops.extend(ops)
     if len(all_ops) > 256:

@@ -139,6 +139,7 @@ async def test_song_batch_compile_error_executes_nothing(fake, session):
                                             "name": "missing"}},
         ])
     assert "nothing was executed" in excinfo.value.hint
+    assert "create_clip first" in excinfo.value.hint  # inner hint survives
     assert fake.live.song["tempo"] == 120.0
     mutating = [f for op, f in fake.op_log if op in ("set", "call",
                                                      "edit_notes", "batch")

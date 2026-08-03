@@ -8,6 +8,15 @@ actionable hint.
 from .errors import ToolError
 
 
+def as_index(spec):
+    """Digit strings count as indices: MCP clients stringify untyped params,
+    so a caller's `track: 0` can arrive as "0". Names always win — this is
+    only reached after an exact-name lookup has failed."""
+    if isinstance(spec, str) and spec.strip().isdigit():
+        return int(spec.strip())
+    return spec
+
+
 async def vec_len(bridge, path, prop):
     result = await bridge.request("get", path=path, props=[prop])
     value = result["values"].get(prop)
@@ -53,6 +62,9 @@ async def _resolve_indexed(bridge, spec, base_path, vec_prop, kind, parent="song
             return {"index": matches[0], "path": "%s.%d" % (base, matches[0]),
                     "name": spec}
         if not matches:
+            index = as_index(spec)
+            if isinstance(index, int) and 0 <= index < count:
+                return {"index": index, "path": "%s.%d" % (base, index)}
             listing = ", ".join("%d:%r" % (i, n) for i, n in enumerate(names))
             raise ToolError("not_found", "no %s named %r" % (kind, spec),
                             hint="available: %s" % (listing or "none"))
@@ -89,6 +101,7 @@ async def resolve_slot(bridge, track, slot):
     """-> dict with track index, slot index, slot path, has_clip."""
     track_ref = await resolve_track(bridge, track)
     slot_count = await vec_len(bridge, track_ref["path"], "clip_slots")
+    slot = as_index(slot)
     if not isinstance(slot, int) or isinstance(slot, bool) or not 0 <= slot < slot_count:
         raise ToolError("not_found", "slot %r out of range" % (slot,),
                         hint="track %d has %d slots (scenes 0–%d)"
