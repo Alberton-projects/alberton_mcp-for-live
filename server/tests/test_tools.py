@@ -175,6 +175,46 @@ async def test_session_overview_shape(fake, session):
     assert lead["clips"]["0"]["color"] == "#112233"
 
 
+async def test_overview_omits_the_clip_map_on_a_large_set(fake, session):
+    """Measured on a real 29-track, 180-scene set: probing every slot cost
+    5 973 wire ops and 17k tokens to draw a map nobody asked for."""
+    for track in fake.live.song["tracks"]:
+        track["clip_slots"] = [{"__class__": "ClipSlot", "has_clip": False,
+                                "clip": None} for _ in range(300)]
+    fake.op_log.clear()
+    overview = await api.session_overview(session, detail="standard")
+
+    assert "clips" not in overview["tracks"][0]
+    assert "900 slots" in overview["clips_note"]
+    assert "get_track" in overview["clips_note"]
+    slot_reads = sum(1 for op, frame in fake.op_log if op == "batch"
+                     for sub in frame["ops"]
+                     if "clip_slots" in sub.get("path", ""))
+    assert slot_reads == 0, "it probed slots anyway"
+
+    # detail='full' is the way to pay for it deliberately
+    full = await api.session_overview(session, detail="full")
+    assert "clips" in full["tracks"][0]
+    assert "clips_note" not in full
+
+
+async def test_overview_keeps_the_clip_map_on_a_small_set(fake, session):
+    await api.create_clip(session, track=0, slot=0, length=4.0, name="keep me")
+    overview = await api.session_overview(session, detail="standard")
+    assert overview["tracks"][0]["clips"]["0"]["name"] == "keep me"
+    assert "clips_note" not in overview
+
+
+async def test_overview_lists_only_named_scenes(fake, session):
+    fake.live.song["scenes"][2]["name"] = "Chorus"
+    for index in (0, 1, 3):
+        fake.live.song["scenes"][index]["name"] = ""
+    overview = await api.session_overview(session, detail="minimal")
+    assert [s["name"] for s in overview["scenes"]] == ["Chorus"]
+    assert "3 of 4 scenes are unnamed" in overview["scenes_note"]
+    assert overview["counts"]["scenes"] == 4      # the count is still honest
+
+
 async def test_browse_and_load_device(fake, session):
     found = await api.browse(session, query="fakesynth")
     assert found["matches"]

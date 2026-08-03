@@ -232,6 +232,17 @@ see that step in the undo history; one tick later it does. Batch rollback must
 therefore be deferred to the next tick — the bridge does this and only then sends the
 batch response. **[verified 2026-08-03 — this bit us]**
 
+Scale, measured on a real 29-track, 180-scene, 368-clip set (`tools/scale_report.py`,
+read-only) **[verified 2026-08-03]**: a wire round trip costs ~200 ms regardless of
+payload, because the script services its inbox on a ~100 ms tick — so latency, not work,
+is the bottleneck, and server-side reads should be issued concurrently rather than
+chunk-by-chunk. A 200-op batch round-trips as fast as a single `get`, and Live's UI stays
+responsive throughout (ping ~200 ms straight after the heaviest read), because the
+script's 50 ms per-tick budget bounds how long the main thread spends. The trap is
+response size, not speed: probing every Session slot to draw a clip map cost 5 973 wire
+ops and ~17 000 tokens of JSON on that set. Orientation tools must scale their answer to
+the set, not to their own completeness.
+
 Loading another set does **not** keep the connection alive: Live tears the Remote Script
 down and re-creates it per document, so the socket drops and comes back — the same path
 as a restart. And deleting a watched object emits **no** event at all: the script's

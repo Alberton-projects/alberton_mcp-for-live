@@ -232,7 +232,7 @@ Conventions for every tool:
 
 | Tool | Params | Returns |
 |---|---|---|
-| `session_overview` | `detail?` | tempo, time signature, scale (name, root), playing state, track list (index, name, color, type midi/audio/return/master, arm/mute/solo, device names, per-slot clip map name+color+playing), scene list |
+| `session_overview` | `detail?` | tempo, time signature, scale (name, root), playing state, track list (index, name, color, type, mute/solo, device names), named scenes. `standard` includes the per-slot clip map only while the set is small (≤600 slots); above that it says so and points at `get_track`, because every slot costs one wire read. `full` always pays, and adds returns and mixer displays. Measured on a real 29-track/180-scene set: `standard` 9.6 KB, `full` 57 KB |
 | `get_track` | `track, detail?` | track props, mixer (volume, pan, sends — normalized and dB/display), devices with parameter names, clip slots |
 | `get_clip` | `clip, include_notes?: false` | clip props (name, color, length, loop, signature, playing state) and optionally notes |
 | `get_notes` | `clip, from_time?, time_span?, from_pitch?, pitch_span?` | note array (A.6 shape) |

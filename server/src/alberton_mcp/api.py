@@ -8,13 +8,19 @@ Times are absolute beats as floats everywhere. Colors are '#RRGGBB' at this
 boundary and integer RGB on the wire.
 """
 
+import asyncio
 import time as _time
 
 from . import colors, files, inventory, resolve
 from .bridge import WireError
 from .errors import ToolError
 
-BATCH_CHUNK = 200          # wire batches are capped at 256 ops (CONTRACT A.9)
+BATCH_CHUNK = 250          # wire batches are capped at 256 ops (CONTRACT A.9)
+# Probing every Session slot of every track costs one wire op each: a
+# 29-track, 180-scene set is 5 220 of them, and the clip map they produce is
+# ~50 KB of JSON nobody asked for. Above this many slots, `standard` says so
+# and leaves the map to get_track. Measured on a real set, 2026-08-03.
+CLIP_MAP_LIMIT = 600
 BROWSER_MAX_ITEMS = 4000   # per category
 BROWSER_MAX_DEPTH = 8
 BROWSE_RESULT_LIMIT = 25
@@ -74,13 +80,24 @@ def _vec_length(value):
 
 async def _gets(bridge, specs):
     """Chunked batch of get ops. specs: [(path, [props]) ...] -> aligned values
-    dicts (None where that get failed)."""
+    dicts (None where that get failed).
+
+    Chunks go out concurrently: a round trip costs about one bridge tick
+    (~100 ms) no matter how much it carries, so issuing them in sequence makes
+    latency, not work, the bottleneck. The script's per-tick budget still
+    bounds how long Live's main thread spends on them.
+    """
+    if not specs:
+        return []
+    chunks = [specs[start:start + BATCH_CHUNK]
+              for start in range(0, len(specs), BATCH_CHUNK)]
+    results = await asyncio.gather(*[
+        bridge.request("batch", stop_on_error=False,
+                       ops=[{"op": "get", "path": path, "props": props}
+                            for path, props in chunk])
+        for chunk in chunks])
     out = []
-    for start in range(0, len(specs), BATCH_CHUNK):
-        chunk = specs[start:start + BATCH_CHUNK]
-        ops = [{"op": "get", "path": path, "props": props}
-               for path, props in chunk]
-        result = await bridge.request("batch", ops=ops, stop_on_error=False)
+    for result in results:
         for sub in result["results"]:
             out.append(sub["result"]["values"] if sub.get("ok") else None)
     return out
@@ -167,17 +184,28 @@ async def session_overview(session, detail="standard"):
         "counts": {"tracks": track_count, "scenes": scene_count,
                    "returns": return_count},
     }
+    # Only named scenes are worth carrying: a long set has hundreds of empty
+    # ones, and "Scene 137" tells the reader nothing the index did not.
     scene_values = await _gets(bridge, [("song.scenes.%d" % i, ["name", "color"])
                                         for i in range(scene_count)])
-    out["scenes"] = [{"index": i,
-                      "name": (v or {}).get("name"),
-                      "color": colors.to_hex((v or {}).get("color"))}
-                     for i, v in enumerate(scene_values)]
+    named = [{"index": i, "name": (v or {}).get("name"),
+              "color": colors.to_hex((v or {}).get("color"))}
+             for i, v in enumerate(scene_values) if (v or {}).get("name")]
+    out["scenes"] = named
+    if len(named) < scene_count:
+        out["scenes_note"] = ("%d of %d scenes are unnamed and omitted"
+                              % (scene_count - len(named), scene_count))
     track_props = ["name", "color", "has_midi_input", "has_audio_input",
                    "is_foldable", "mute", "solo", "can_be_armed",
                    "clip_slots", "devices", "playing_slot_index"]
     track_values = await _gets(bridge, [("song.tracks.%d" % i, track_props)
                                         for i in range(track_count)])
+    slot_probes = sum(_vec_length((v or {}).get("clip_slots"))
+                      for v in track_values)
+    # `full` always pays; `standard` only when the set is small enough that
+    # the map is worth its round trips and its bytes.
+    want_clip_map = detail == "full" or (detail != "minimal"
+                                         and slot_probes <= CLIP_MAP_LIMIT)
     tracks = []
     clip_lookups = []   # (track_entry, slot_index, path)
     device_lookups = []  # (track_entry, path)
@@ -199,16 +227,27 @@ async def session_overview(session, detail="standard"):
         if detail != "minimal":
             for d in range(_vec_length(values.get("devices"))):
                 device_lookups.append((entry, "song.tracks.%d.devices.%d" % (i, d)))
+        if want_clip_map:
             for s in range(_vec_length(values.get("clip_slots"))):
                 clip_lookups.append((entry, s,
                                      "song.tracks.%d.clip_slots.%d" % (i, s)))
+        else:
+            entry.pop("clips", None)
     out["tracks"] = tracks
     if detail == "minimal":
         return out
+    if not want_clip_map:
+        out["clips_note"] = (
+            "the Session clip map is omitted: %d slots would each cost a read "
+            "(over the %d limit). Use get_track for one track's clips, or "
+            "detail='full' to pay for all of them."
+            % (slot_probes, CLIP_MAP_LIMIT))
     device_values = await _gets(bridge, [(path, ["name"])
                                          for _e, path in device_lookups])
     for (entry, _path), values in zip(device_lookups, device_values):
         entry["devices"].append((values or {}).get("name"))
+    if not clip_lookups:
+        return out
     slot_values = await _gets(bridge, [(path, ["has_clip"])
                                        for _e, _s, path in clip_lookups])
     with_clip = [(entry, s, path) for (entry, s, path), values

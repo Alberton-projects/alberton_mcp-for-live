@@ -243,21 +243,34 @@ async def main():
             run.check("overlap refused before Live trims anything",
                       exc.code == "conflict", exc.message)
 
+        # A pattern with a known shape, built here rather than assumed to
+        # exist: four 7/4 bars, denser on the last one, all on the 16th grid.
+        pattern = []
+        for bar in range(4):
+            hits = (0.0, 1.75, 2.5, 4.0, 5.5)
+            if bar == 3:
+                hits += (6.0, 6.25, 6.5, 6.75)
+            for offset in hits:
+                pattern.append({"pitch": 36 + (bar % 2), "velocity": 100,
+                                "start": bar * 7.0 + offset, "duration": 0.25})
+        await api.create_clip(session, track=track_index, slot=2, length=28.0,
+                              name="verify summary", notes=pattern,
+                              signature_numerator=7, signature_denominator=4)
         summary = await api.get_notes(session,
-                                      clip={"track": "Drums", "slot": 0},
+                                      clip={"track": track_index, "slot": 2},
                                       summary=True)
         stats = summary.get("summary", {})
         per_bar = stats.get("time", {}).get("notes_per_bar", [])
-        run.check("note summary on the real drum clip",
-                  stats.get("count") == sum(per_bar) and len(per_bar) == 8
+        run.check("note summary reports the pattern's real shape",
+                  stats.get("count") == len(pattern) == sum(per_bar)
+                  and len(per_bar) == 4
                   and stats["grid"]["verdict"] == "quantised"
                   and stats["time"]["bar_beats"] == 7.0
-                  # the fill bars carry more notes than the plain ones
-                  and per_bar[3] > per_bar[0] and per_bar[7] > per_bar[4],
+                  and per_bar[3] > per_bar[0]          # the busy bar shows up
+                  and stats["pitch"]["distinct"] == 2,
                   json.dumps(stats)[:500])
-        print("      drums: %s notes/bar, polyphony %s, classes %s" % (
-            stats["time"]["notes_per_bar"], stats["max_polyphony"],
-            stats["pitch"]["classes"]))
+        print("      summary: %s notes/bar, polyphony %s, classes %s" % (
+            per_bar, stats["max_polyphony"], stats["pitch"]["classes"]))
 
         created = await api.create_audio_track(session,
                                                name="Alberton audio verify")
