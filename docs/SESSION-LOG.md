@@ -75,7 +75,11 @@ Ordered by what a stranger would hit first.
    allowed connection; malformed input from the *model* side rather than the wire;
    material built by the tools then edited by hand and read back; and sets far larger
    than the 29-track one measured so far.
-2. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
+2. **`get_track(detail='full')` should carry each parameter's range and current value.**
+   Today it returns names only, while `set_device_parameter`'s docstring points at it for
+   `[min, max]` — so choosing a legal value costs one `lom_get` per parameter. Found
+   2026-08-04 while driving a real Max for Live device; see HANDOFF §7.
+3. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
    this last, once the README has stopped moving.
 
 Everything else on this list is done. Testing found, in order: the stringified-locator

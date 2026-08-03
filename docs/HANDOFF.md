@@ -393,6 +393,26 @@ The user's app repository `nuzic_app` (GitLab) has a personal access token embed
 plaintext in the git remote URL. Unrelated to this project, but it was flagged to them and
 should be rotated.
 
+**A Max for Live device's blob parameters are invisible to the LOM, and they can hold the
+device's entire musical content.** A `live.*` object whose parameter is declared
+`parameter_type 3` (blob) — `live.step` is the common case — is absent from
+`device.parameters`, absent from the set's `ParameterList`, and unreachable by any tool we
+have. It is saved separately, in an `MxDBlob` chunk. A step sequencer therefore reports
+its twenty-odd knobs and *not one of its notes*. Two consequences. First, the LOM is not a
+complete view of a M4L device, and a caller cannot tell from the parameter list that
+anything is missing. Second, Live restores the blob **after** the ordinary parameters, so
+a device whose UI mirrors blob state in a normal parameter can load with the two
+disagreeing — observed in the wild: sequencer lanes playing with their Active toggles
+showing off, unfixable from the UI because the toggle already held the right value.
+**[verified 2026-08-04, Live 12.4.3, against four Step Sequencer instances]**
+
+`get_track(detail='full')` returns device parameter **names only** (`api.py`, the `_gets`
+over `…parameters.%d` asks for `name`). The docstring of `set_device_parameter` tells the
+caller to look there for a parameter's `[min, max]`, which is not on offer — the range
+needs a `lom_get` per parameter, one round trip each. Either the docstring or the tool is
+wrong; the tool is the better thing to fix, since choosing a legal value is the first
+thing a caller needs. **[found 2026-08-04]**
+
 ---
 
 ## 8. Reference material from the diagnostic session
