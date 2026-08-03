@@ -977,9 +977,30 @@ async def transport(session, action=None, position=None):
 # --- tracks ------------------------------------------------------------------------
 
 
-async def _track_readback(bridge, index):
+async def _track_readback(bridge, index, expect_name=None):
+    """Read a freshly created track back, and make sure it is really ours.
+
+    The index is computed from a count taken before the track was made, so a
+    human inserting or deleting a track in Live at the same moment shifts it.
+    Cheap to detect: the name we asked for should be at that index.
+    """
     values = await _gets(bridge, [("song.tracks.%d" % index, ["name", "color"])])
     values = values[0] or {}
+    if expect_name and values.get("name") != expect_name:
+        count = await resolve.vec_len(bridge, "song", "tracks")
+        names = await resolve.names_of(bridge, "song.tracks", count)
+        matches = [i for i, name in enumerate(names) if name == expect_name]
+        if len(matches) == 1:
+            index = matches[0]
+            values = (await _gets(bridge, [("song.tracks.%d" % index,
+                                            ["name", "color"])]))[0] or {}
+        else:
+            raise ToolError("conflict",
+                            "the track was created but the set changed "
+                            "underneath: %r is not at index %d"
+                            % (expect_name, index),
+                            hint="something else added or removed a track at "
+                                 "the same time; re-read session_overview")
     return {"index": index, "path": "song.tracks.%d" % index,
             "name": values.get("name"),
             "color": colors.to_hex(values.get("color"))}
@@ -989,14 +1010,16 @@ async def create_midi_track(session, name=None, color=None, index=-1):
     params = {"name": name, "color": color, "index": index}
     ops, new_index = await _c_create_track(session, params, "midi")
     await _run_atomic(session.bridge, ops, "create_midi_track")
-    return {"track": await _track_readback(session.bridge, new_index)}
+    return {"track": await _track_readback(session.bridge, new_index,
+                                           expect_name=name)}
 
 
 async def create_audio_track(session, name=None, color=None, index=-1):
     params = {"name": name, "color": color, "index": index}
     ops, new_index = await _c_create_track(session, params, "audio")
     await _run_atomic(session.bridge, ops, "create_audio_track")
-    return {"track": await _track_readback(session.bridge, new_index)}
+    return {"track": await _track_readback(session.bridge, new_index,
+                                           expect_name=name)}
 
 
 async def set_track(session, track, **params):
@@ -1532,8 +1555,15 @@ async def watch(session, path, props):
     result = await session.bridge.request("subscribe", path=path, props=props)
     _reconcile_connection(session)   # after connecting, so the epoch is current
     session.watches[result["sub"]] = {"path": path, "props": props}
-    return {"watch_id": result["sub"], "current_values": result["values"],
-            "note": "changes accumulate server-side; pull them with get_changes"}
+    out = {"watch_id": result["sub"], "current_values": result["values"],
+           "note": "changes accumulate server-side; pull them with get_changes"}
+    # One property fires on every bridge tick while the transport rolls, and a
+    # handful of those watches will dominate the event budget for all of them.
+    if "current_song_time" in props:
+        out["warning"] = ("current_song_time changes about ten times a second "
+                          "while Live is playing — watch it only briefly, and "
+                          "read song position with lom_get otherwise")
+    return out
 
 
 async def unwatch(session, watch_id):

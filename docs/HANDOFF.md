@@ -232,6 +232,29 @@ see that step in the undo history; one tick later it does. Batch rollback must
 therefore be deferred to the next tick — the bridge does this and only then sends the
 batch response. **[verified 2026-08-03 — this bit us]**
 
+Under load, measured 2026-08-03. **The main thread does not stall.** Writing 16 000
+notes takes 3.0 s end to end and a ping straight afterwards returns in 199 ms against a
+200 ms baseline; 90 s of concurrent hammering — the server storming reads and writes
+while a human dragged faders, switched views and loaded devices with audio playing —
+gave 0 disconnects, 0 stalls over 1 s, ping median 70 ms, and **no audible clicks or
+dropouts** (judged by ear, which no probe can do).
+
+The event outbox does overflow as designed, but only when provoked: a real session ran at
+~12 events/s, four orders of magnitude below the cap. Throttling a client's receive
+buffer and subscribing 120 times to `current_song_time` produced 40 overflow notices,
+each naming what it dropped, with 4 076 changes still delivered. The lesson is a client
+obligation, now in CONTRACT: **responses and events share one outbound queue**, so a
+client that stops draining starves its own command responses — the drowned connection
+never answered a ping while a fresh one to the same script answered instantly. The
+saturation is per connection and reconnecting clears it.
+
+`create_*_track` computes the new track's index from a count taken before the call, so a
+human adding or removing a track at that moment invalidates it — this bit us for real
+during a stress session. The read-back now verifies the name is where it should be,
+finds it if not, and reports a conflict rather than guessing when the name is in two
+places. A millisecond window remains inside the create-and-name batch, and closing it
+would cost the atomicity that makes creating a named clip one undo step.
+
 `Clip.remove_notes_by_id` refuses the whole call unless **every** id is present, and
 says only "All given IDs must be present in clip" — so the server reads the clip back on
 that failure and names the missing ones. Note ids are per clip and are not reused after

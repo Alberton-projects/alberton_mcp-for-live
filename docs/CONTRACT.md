@@ -161,7 +161,16 @@ Event semantics (backpressure by design):
   the latest value; intermediate values are unobservable by contract.
 - `seq` is per-subscription and monotonic. If the outbound queue exceeds its cap the
   script drops oldest events and emits `overflow` with the dropped count; the server
-  re-reads via `get` to resynchronize.
+  re-reads via `get` to resynchronize. Verified 2026-08-03 by throttling a client's
+  receive buffer and subscribing 120 times to the playhead: 40 overflow notices, each
+  naming what it dropped, while 4 076 changes still arrived.
+- **Client obligation: drain continuously.** Responses and events share one outbound
+  queue, so a client that stops reading — or that subscribes to more than it can keep
+  up with — starves its own command responses behind the backlog. Measured in the same
+  run: the drowned connection never answered a `ping`, while a fresh connection to the
+  same script answered at once. The bridge is unharmed; the saturation is per
+  connection, and reconnecting clears it. `song.current_song_time` is the one property
+  that fires every tick while the transport rolls, so it dominates any event budget.
 - If the subscribed object dies (track deleted), the script emits `gone` and frees the
   subscription — **best-effort only**. Verified against Live 12.4.3: detection is
   passive, because the script can only notice a dead object while servicing a listener

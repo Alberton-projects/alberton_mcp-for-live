@@ -118,3 +118,13 @@ async def test_reconnecting_to_a_different_set_is_not_stale(fake, session):
         assert after["tempo"] == 140.0
     finally:
         await other.stop()
+
+
+async def test_watching_the_playhead_warns_about_its_rate(session):
+    """It fires on every bridge tick while playing, and a few such watches
+    dominate the event budget — measured against Live 12.4.3."""
+    watched = await api.watch(session, path="song",
+                              props=["current_song_time"])
+    assert "ten times a second" in watched["warning"]
+    quiet = await api.watch(session, path="song", props=["tempo"])
+    assert "warning" not in quiet

@@ -156,3 +156,51 @@ async def test_tempo_follower_is_settable(fake, session):
     result = await api.set_song(session, tempo_follower_enabled=True)
     assert result["values"]["tempo_follower_enabled"] is True
     assert fake.live.song["tempo_follower_enabled"] is True
+
+
+# --- concurrent editing ---------------------------------------------------------
+#
+# Found during a stress session: the user added a track in Live while the
+# server was adding one of its own. create_*_track computes the new index from
+# a count taken before the call, so anything that shifts the vector
+# invalidates it.
+
+
+def _interfere_after_batch(fake, name):
+    """Somebody else inserts a track once our create+name batch has landed."""
+    original = fake._op_batch
+
+    def hooked(frame, events):
+        result = original(frame, events)
+        if any(sub.get("method", "").startswith("create_") for sub in
+               frame.get("ops", [])):
+            from fake_bridge import _track
+            fake.live.song["tracks"].insert(0, _track(name))
+        return result
+
+    fake._op_batch = hooked
+    return original
+
+
+async def test_a_created_track_is_found_even_if_the_set_shifted(fake, session):
+    original = _interfere_after_batch(fake, "theirs")
+    try:
+        created = await api.create_midi_track(session, name="mine")
+    finally:
+        fake._op_batch = original
+    assert created["track"]["name"] == "mine"
+    names = [t["name"] for t in fake.live.song["tracks"]]
+    assert names[created["track"]["index"]] == "mine"   # the index was corrected
+
+
+async def test_an_ambiguous_shift_is_reported_not_guessed(fake, session):
+    """If the name is now in two places there is no safe answer, so say so."""
+    original = _interfere_after_batch(fake, "mine")
+    try:
+        with pytest.raises(ToolError) as excinfo:
+            await api.create_midi_track(session, name="mine")
+    finally:
+        fake._op_batch = original
+    assert excinfo.value.code == "conflict"
+    assert "changed underneath" in excinfo.value.message
+    assert "session_overview" in excinfo.value.hint

@@ -27,12 +27,14 @@ in HANDOFF, the *spec* in CONTRACT.
 
 | Suite | Needs Live | Checks |
 |---|---|---|
-| `server/tests/` (pytest) | no | 101 |
+| `server/tests/` (pytest) | no | 104 |
 | `tools/wire_probe.py` | yes | 34 |
 | `tools/live_verify.py` | yes | 23 |
 | `tools/lifecycle_probe.py` | yes | 23 (+4 manual) |
 | `tools/functional_suite.py` | yes | 51, and **46/46 tools exercised** |
 | `tools/degenerate_probe.py` | yes | 43 (+2 need a human) |
+| `tools/limits_probe.py` | yes | 15 — batch, note and subscription ceilings, overflow |
+| `tools/stress_probe.py` | yes | measurement under concurrent human use |
 | `tools/scale_report.py` | yes | read-only measurement, no assertions |
 
 ---
@@ -50,10 +52,10 @@ Ordered by what a stranger would hit first.
    answered: measured on a 29-track set, Live stayed responsive throughout.
 3. **Two degenerate cases need a human**: a group track (Cmd-G) and a frozen track.
    Live exposes neither to the LOM, so `degenerate_probe.py` skips them.
-4. **Level 3, portability** — only Live 12.4.3 Suite on macOS has ever been tested.
+2. **Level 3, portability** — only Live 12.4.3 Suite on macOS has ever been tested.
    Either test Live 11 / other 12.x / Windows, or state the supported scope in the
    README and promise nothing more.
-5. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
+3. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
    this last, once the README has stopped moving.
 
 ## Open — undecided
@@ -65,6 +67,17 @@ Ordered by what a stranger would hit first.
 ---
 
 ## Log
+
+### 2026-08-03 — under load, and with a human in the way
+
+- `db5a078` **Level 2 and stress**: the declared ceilings provoked deliberately (batch 256
+  and 257, 16 000 notes, 128 subscriptions, event overflow) and a 90 s session with the
+  server hammering while the user played. Nothing broke: 0 disconnects, 0 stalls, no
+  audible dropouts, ping 199 ms right after a 16 000-note write. Overflow behaves as
+  specified once provoked. Two findings: responses and events share one outbound queue,
+  so a client that stops draining starves itself (now a stated client obligation), and
+  `create_*_track`'s computed index is invalidated by a human editing at the same
+  moment — the read-back now verifies and corrects it.
 
 ### 2026-08-03 — degenerate material
 
