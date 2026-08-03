@@ -39,11 +39,43 @@ in HANDOFF, the *spec* in CONTRACT.
 
 ---
 
+## How to work on this
+
+Learned by getting it wrong; none of it is obvious from the code.
+
+- **Only one client may talk to the bridge** (CONTRACT A.1). Running any probe in
+  `tools/` displaces whatever is connected — including the MCP server inside Claude
+  Desktop, whose tools then fail until it reconnects on its next call. Never run two
+  probes at once either: the limits probe broke itself this way by opening a second
+  socket to measure ping.
+- **Do not touch Live while a probe runs.** Adding or removing a track shifts every
+  index behind it, and a probe that computed one a moment earlier will act on the wrong
+  thing. This is a real hazard, not a testing artefact — it is how the `create_*_track`
+  race was found.
+- **Probes work on scratch material named `ZZ …`** and delete it afterwards. If one dies
+  half-way, look for tracks with that prefix; nothing else in the set is ever touched.
+- **Editing `impl.py` needs no Live restart** — toggle the Control Surface to None and
+  back. Only `__init__.py` changing costs a restart, and it is deliberately frozen.
+- **Record a commit hash in this file in a *separate* commit.** Writing it and then
+  `--amend`ing rewrites the very hash just recorded; it happened twice and left four
+  dead references.
+- **The test set is `proves MCP-1`**: 6 tracks (Bass, Drums, Structure, Pad, two audio),
+  100 BPM, 7/4, E minor, built in the first musical session. The Bass track carries a
+  `Bass Raw` rack whose chain holds an Operator — the only nested-device material
+  available, and what the rack-path tests use.
+
 ## Open — decided but not built
 
 Ordered by what a stranger would hit first.
 
-1. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
+1. **More testing, scope undecided.** The user judged 2026-08-03 that the suites so far
+   are not enough, without saying which axis to push. Candidates not yet touched, in
+   rough order of what a stranger would hit: a long soak (hours, not minutes); repeated
+   runs to prove the suites are idempotent; several MCP clients competing for the one
+   allowed connection; malformed input from the *model* side rather than the wire;
+   material built by the tools then edited by hand and read back; and sets far larger
+   than the 29-track one measured so far.
+2. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
    this last, once the README has stopped moving.
 
 Everything else on this list is done. Testing found, in order: the stringified-locator
