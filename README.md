@@ -3,10 +3,11 @@
 An [MCP](https://modelcontextprotocol.io) server plus a companion Ableton Live Remote
 Script that let an LLM read and write a Live set through the Live Object Model (LOM).
 
-> **Status: working v0.1** (2026-08-03). Inventory, contract 1.0, bridge and server are
-> done and verified: the bridge passes a 34-check wire probe and the server passes 25
-> unit tests plus a 14-check end-to-end run against a live Ableton instance. Not yet
-> packaged for third parties. Plan and findings: [docs/HANDOFF.md](docs/HANDOFF.md).
+> **Status: working v1.1** (2026-08-03). Inventory, contract 1.0, bridge and server are
+> done and verified: the bridge passes a 34-check wire probe and the server passes 59
+> unit tests plus a 23-check end-to-end run against a live Ableton instance. Session and
+> Arrangement writing, clip automation, audio import. Not yet packaged for third
+> parties. Plan and findings: [docs/HANDOFF.md](docs/HANDOFF.md).
 
 ## Quick start
 

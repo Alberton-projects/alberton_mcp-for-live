@@ -10,7 +10,7 @@ boundary and integer RGB on the wire.
 
 import time as _time
 
-from . import colors, inventory, resolve
+from . import colors, files, inventory, resolve
 from .bridge import WireError
 from .errors import ToolError
 
@@ -317,13 +317,86 @@ async def get_track(session, track, detail="standard"):
     return out
 
 
-async def get_clip(session, clip, include_notes=False):
+PITCH_NAMES = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+
+
+def pitch_name(pitch):
+    """Ableton's display convention: C3 = 60."""
+    return "%s%d" % (PITCH_NAMES[pitch % 12], pitch // 12 - 2)
+
+
+def summarize_notes(notes, bar_beats=4.0, grid=0.25):
+    """Statistics over a note set — the cheap alternative to dumping them all.
+
+    Deliberately statistics, not interpretation: no chord names, no key
+    guessing. Naming what the numbers mean is the client's job (CLAUDE.md:
+    no domain logic in this repo).
+    """
+    if not notes:
+        return {"count": 0}
+    pitches = [n["pitch"] for n in notes]
+    starts = [n["start"] for n in notes]
+    ends = [n["start"] + n["duration"] for n in notes]
+    velocities = [n.get("velocity", 100) for n in notes]
+    durations = [n["duration"] for n in notes]
+    classes = sorted(set(p % 12 for p in pitches))
+    deviations = [min(s % grid, grid - (s % grid)) for s in starts] if grid else []
+    span_end = max(ends)
+    bars = max(1, int(span_end / bar_beats) + (1 if span_end % bar_beats else 0))
+    per_bar = []
+    for bar in range(bars):
+        lo, hi = bar * bar_beats, (bar + 1) * bar_beats
+        per_bar.append(sum(1 for s in starts if lo <= s < hi))
+    # max simultaneous sounding notes, by sweeping onsets and offsets
+    events = sorted([(s, 1) for s in starts] + [(e, -1) for e in ends])
+    live_now = peak = 0
+    for _at, delta in events:
+        live_now += delta
+        peak = max(peak, live_now)
+    summary = {
+        "count": len(notes),
+        "pitch": {"min": pitch_name(min(pitches)), "max": pitch_name(max(pitches)),
+                  "distinct": len(set(pitches)),
+                  "classes": [PITCH_NAMES[c] for c in classes]},
+        "time": {"first_onset": round(min(starts), 6),
+                 "last_end": round(span_end, 6),
+                 "notes_per_bar": per_bar, "bar_beats": bar_beats},
+        "velocity": {"min": min(velocities), "max": max(velocities),
+                     "mean": round(sum(velocities) / len(velocities), 2),
+                     "distinct": len(set(velocities))},
+        "duration": {"min": round(min(durations), 6),
+                     "max": round(max(durations), 6),
+                     "mean": round(sum(durations) / len(durations), 6)},
+        "max_polyphony": peak,
+    }
+    if deviations:
+        on_grid = sum(1 for d in deviations if d < 0.002)
+        summary["grid"] = {
+            "beats": grid, "on_grid": on_grid, "off_grid": len(notes) - on_grid,
+            "mean_deviation": round(sum(deviations) / len(deviations), 6),
+            "max_deviation": round(max(deviations), 6),
+            "verdict": "quantised" if on_grid == len(notes)
+                       else "played" if on_grid < len(notes) * 0.2 else "mixed",
+        }
+    return summary
+
+
+async def _bar_beats(bridge, clip_path):
+    values = await _gets(bridge, [(clip_path, ["signature_numerator",
+                                               "signature_denominator"])])
+    values = values[0] or {}
+    numerator = _scalar(values.get("signature_numerator")) or 4
+    denominator = _scalar(values.get("signature_denominator")) or 4
+    return float(numerator) * 4.0 / float(denominator)
+
+
+async def get_clip(session, clip, include_notes=False, note_summary=False):
     bridge = session.bridge
     ref = await resolve.resolve_clip(bridge, clip)
     described = await bridge.request("describe", path=ref["clip_path"])
     p = described["props"]
     is_midi = _scalar(p.get("is_midi_clip"))
-    out = {"track": ref["track_index"], "slot": ref["slot"],
+    out = {"track": ref["track_index"], "view": ref.get("view", "session"),
            "path": ref["clip_path"],
            "name": _scalar(p.get("name")),
            "color": colors.to_hex(_scalar(p.get("color"))),
@@ -335,6 +408,15 @@ async def get_clip(session, clip, include_notes=False):
            "signature": "%s/%s" % (_scalar(p.get("signature_numerator")),
                                    _scalar(p.get("signature_denominator"))),
            "playing": _scalar(p.get("is_playing"))}
+    if ref.get("view") == "arrangement":
+        out["arrangement"] = {"index": ref["arrangement_index"],
+                              "start": _scalar(p.get("start_time")),
+                              "end": _scalar(p.get("end_time")),
+                              "start_marker": _scalar(p.get("start_marker")),
+                              "end_marker": _scalar(p.get("end_marker")),
+                              "muted": _scalar(p.get("muted"))}
+    else:
+        out["slot"] = ref["slot"]
     if not is_midi:
         out["audio"] = {"warping": _scalar(p.get("warping")),
                         "warp_mode": _scalar(p.get("warp_mode")),
@@ -342,14 +424,19 @@ async def get_clip(session, clip, include_notes=False):
                         "pitch_coarse": _scalar(p.get("pitch_coarse")),
                         "pitch_fine": _scalar(p.get("pitch_fine")),
                         "file_path": _scalar(p.get("file_path"))}
-    if include_notes and is_midi:
+    if (include_notes or note_summary) and is_midi:
         notes = await bridge.request("get_notes", path=ref["clip_path"])
-        out["notes"] = notes["notes"]
+        if include_notes:
+            out["notes"] = notes["notes"]
+        if note_summary:
+            bar_beats = await _bar_beats(bridge, ref["clip_path"])
+            out["note_summary"] = summarize_notes(notes["notes"], bar_beats)
     return out
 
 
 async def get_notes(session, clip, from_time=None, time_span=None,
-                    from_pitch=None, pitch_span=None):
+                    from_pitch=None, pitch_span=None, summary=False,
+                    grid=0.25):
     bridge = session.bridge
     ref = await resolve.resolve_clip(bridge, clip)
     params = {"path": ref["clip_path"]}
@@ -362,8 +449,18 @@ async def get_notes(session, clip, from_time=None, time_span=None,
     if pitch_span is not None:
         params["pitch_span"] = int(pitch_span)
     result = await bridge.request("get_notes", **params)
-    return {"track": ref["track_index"], "slot": ref["slot"],
-            "count": len(result["notes"]), "notes": result["notes"]}
+    out = {"track": ref["track_index"], "view": ref.get("view", "session"),
+           "count": len(result["notes"])}
+    if ref.get("view") == "arrangement":
+        out["arrangement"] = ref["arrangement_index"]
+    else:
+        out["slot"] = ref["slot"]
+    if summary:
+        bar_beats = await _bar_beats(bridge, ref["clip_path"])
+        out["summary"] = summarize_notes(result["notes"], bar_beats, grid)
+    else:
+        out["notes"] = result["notes"]
+    return out
 
 
 async def get_changes(session, since=0):
@@ -1001,17 +1098,20 @@ async def _walk_browser_category(session, category):
     return session.browser_cache[category]
 
 
-async def browse(session, query, category=None):
+async def browse(session, query, category=None, refresh=False):
     if category is not None and category not in BROWSER_CATEGORIES:
         raise ToolError("invalid_argument", "unknown category %r" % category,
                         hint="one of: %s" % ", ".join(sorted(BROWSER_CATEGORIES)))
     categories = [category] if category else list(DEFAULT_BROWSE_CATEGORIES)
     terms = [t for t in str(query).lower().split() if t]
     matches = []
+    walked = {}
     for cat in categories:
-        cache = session.browser_cache.get(cat)
+        cache = None if refresh else session.browser_cache.get(cat)
         if cache is None:
             cache = await _walk_browser_category(session, cat)
+        walked[cat] = {"items": len(cache["items"]),
+                       "age_seconds": round(_time.time() - cache["walked_at"], 1)}
         for item in cache["items"]:
             haystack = ("%s %s" % (item["name"] or "",
                                    item["folder"] or "")).lower()
@@ -1025,7 +1125,25 @@ async def browse(session, query, category=None):
               for _rank, cat, item in matches[:BROWSE_RESULT_LIMIT]]
     return {"matches": shaped,
             "searched_categories": categories,
-            "total_matches": len(matches)}
+            "total_matches": len(matches),
+            "index": walked,
+            "note": "the index is cached per category; pass refresh=true after "
+                    "installing packs or adding user-library content"}
+
+
+async def refresh_browser_index(session, category=None):
+    """Drop the cached browser walk so the next browse re-reads Live."""
+    if category is not None and category not in BROWSER_CATEGORIES:
+        raise ToolError("invalid_argument", "unknown category %r" % category,
+                        hint="one of: %s" % ", ".join(sorted(BROWSER_CATEGORIES)))
+    dropped = sorted(session.browser_cache) if category is None else \
+        ([category] if category in session.browser_cache else [])
+    if category is None:
+        session.browser_cache.clear()
+    else:
+        session.browser_cache.pop(category, None)
+    return {"dropped": dropped,
+            "note": "the next browse for these categories walks Live again"}
 
 
 async def load_device(session, track, uri):
@@ -1320,6 +1438,189 @@ async def duplicate_clip_to_arrangement(session, clip, time):
     return {"placed_at": position, "track": ref["track_index"],
             "result": result.get("value"),
             "note": "see list_arrangement_clips to confirm"}
+
+
+async def _new_arrangement_clip_ref(bridge, track_path, at):
+    """Find the clip a create_* call just placed.
+
+    Live returns the new Clip, but the bridge cannot canonicalize an
+    Arrangement clip into a path (it has no clip_slot), so it comes back as a
+    path-less stub. Matching by start_time is exact: a track cannot hold two
+    Arrangement clips starting at the same beat.
+    """
+    clips = await resolve.arrangement_clips(bridge, track_path)
+    for index, start, end in clips:
+        if start is not None and abs(start - at) < 1e-6:
+            return {"arrangement_index": index, "start": start, "end": end,
+                    "clip_path": "%s.arrangement_clips.%d" % (track_path, index)}
+    raise ToolError("internal",
+                    "created the clip but could not find it at beat %g" % at)
+
+
+async def create_arrangement_clip(session, track, time, length, name,
+                                  color=None, notes=None,
+                                  signature_numerator=None,
+                                  signature_denominator=None):
+    """Native Arrangement MIDI clip. Times are song-absolute beats."""
+    bridge = session.bridge
+    track_ref = await resolve.resolve_track(bridge, track)
+    at = _require_number(time, "time", lo=0.0, hi=1576800.0)
+    length = _require_number(length, "length")
+    if length <= 0:
+        raise ToolError("invalid_argument", "length must be > 0 beats")
+    values = await _gets(bridge, [(track_ref["path"], ["has_midi_input"])])
+    if not (values[0] or {}).get("has_midi_input"):
+        raise ToolError("invalid_argument",
+                        "track %d is not a MIDI track" % track_ref["index"],
+                        hint="use import_audio_clip for audio tracks")
+    existing = await resolve.arrangement_clips(bridge, track_ref["path"])
+    for _index, start, end in existing:
+        if start is None or end is None:
+            continue
+        if start < at + length and at < end:
+            raise ToolError("conflict",
+                            "an Arrangement clip already occupies %g-%g on "
+                            "track %d" % (start, end, track_ref["index"]),
+                            hint="Live would trim or replace it; delete_clip "
+                                 "first or choose a free span")
+    await _run_atomic(bridge, [{"op": "call", "path": track_ref["path"],
+                                "method": "create_midi_clip",
+                                "args": [at, length]}],
+                      "create_arrangement_clip")
+    ref = await _new_arrangement_clip_ref(bridge, track_ref["path"], at)
+    ops = []
+    props = {"name": str(name)}
+    if color is not None:
+        props["color"] = colors.to_int(color)
+    if signature_numerator:
+        props["signature_numerator"] = int(signature_numerator)
+    if signature_denominator:
+        props["signature_denominator"] = int(signature_denominator)
+    ops.append({"op": "set", "path": ref["clip_path"], "props": props})
+    added_ids = []
+    if notes:
+        ops.append({"op": "edit_notes", "path": ref["clip_path"],
+                    "add": _validate_notes(notes, "notes")})
+    results = await _run_atomic(bridge, ops, "create_arrangement_clip")
+    if notes:
+        added_ids = (results[-1].get("result") or {}).get("added_ids", [])
+    read_back = await _gets(bridge, [(ref["clip_path"],
+                                      ["name", "color", "start_time",
+                                       "end_time", "length"])])
+    read_back = read_back[0] or {}
+    return {"clip": {"track": track_ref["index"], "view": "arrangement",
+                     "arrangement": ref["arrangement_index"],
+                     "name": read_back.get("name"),
+                     "color": colors.to_hex(read_back.get("color")),
+                     "start": read_back.get("start_time"),
+                     "end": read_back.get("end_time"),
+                     "length": read_back.get("length")},
+            "added_note_ids": added_ids}
+
+
+async def import_audio_clip(session, track, file_path, time=None, slot=None,
+                            name=None, color=None):
+    """Import an audio file into an Arrangement position or a Session slot."""
+    bridge = session.bridge
+    path = files.validate_audio_path(file_path)
+    track_ref = await resolve.resolve_track(bridge, track)
+    values = await _gets(bridge, [(track_ref["path"], ["has_audio_input"])])
+    if not (values[0] or {}).get("has_audio_input"):
+        raise ToolError("invalid_argument",
+                        "track %d is not an audio track" % track_ref["index"],
+                        hint="create_audio_track first — Live refuses audio "
+                             "clips on MIDI tracks")
+    if (time is None) == (slot is None):
+        raise ToolError("invalid_argument",
+                        "give exactly one of 'time' (Arrangement) or 'slot' "
+                        "(Session)")
+    if slot is not None:
+        slot_ref = await resolve.resolve_slot(bridge, track, slot)
+        if slot_ref["has_clip"]:
+            raise ToolError("conflict",
+                            "track %d slot %d already holds a clip"
+                            % (slot_ref["track_index"], slot_ref["slot"]),
+                            hint="delete_clip first, or choose another slot")
+        await _run_atomic(bridge, [{"op": "call", "path": slot_ref["slot_path"],
+                                    "method": "create_audio_clip",
+                                    "args": [path]}], "import_audio_clip")
+        clip_path = slot_ref["slot_path"] + ".clip"
+        located = {"view": "session", "slot": slot_ref["slot"]}
+    else:
+        at = _require_number(time, "time", lo=0.0, hi=1576800.0)
+        await _run_atomic(bridge, [{"op": "call", "path": track_ref["path"],
+                                    "method": "create_audio_clip",
+                                    "args": [path, at]}], "import_audio_clip")
+        ref = await _new_arrangement_clip_ref(bridge, track_ref["path"], at)
+        clip_path = ref["clip_path"]
+        located = {"view": "arrangement", "arrangement": ref["arrangement_index"]}
+    props = {}
+    if name is not None:
+        props["name"] = str(name)
+    if color is not None:
+        props["color"] = colors.to_int(color)
+    if props:
+        await _run_atomic(bridge, [{"op": "set", "path": clip_path,
+                                    "props": props}], "import_audio_clip")
+    read_back = await _gets(bridge, [(clip_path, ["name", "color", "length",
+                                                  "file_path", "warping",
+                                                  "start_time"])])
+    read_back = read_back[0] or {}
+    clip = {"track": track_ref["index"], "name": read_back.get("name"),
+            "color": colors.to_hex(read_back.get("color")),
+            "length": read_back.get("length"),
+            "file": read_back.get("file_path"),
+            "warping": read_back.get("warping")}
+    clip.update(located)
+    if located["view"] == "arrangement":
+        clip["start"] = read_back.get("start_time")
+    return {"clip": clip, "imported": path}
+
+
+async def set_arrangement_clip(session, clip, **params):
+    """Name, colour, mute and content trim (start/end markers) of a clip.
+
+    Arrangement position itself is read-only in the LOM: Clip.start_time and
+    end_time have no setter. To move a clip, delete and recreate it, or use
+    duplicate_clip_to_arrangement at the new time.
+    """
+    ref = await resolve.resolve_clip(session.bridge, clip)
+    props = {}
+    if "name" in params:
+        props["name"] = str(params["name"])
+    if "color" in params:
+        props["color"] = colors.to_int(params["color"])
+    for key in ("muted", "start_marker", "end_marker", "looping",
+                "loop_start", "loop_end"):
+        if key in params:
+            props[key] = params[key]
+    if not props:
+        raise ToolError("invalid_argument", "set_arrangement_clip: nothing to set",
+                        hint="settable: name, color, muted, start_marker, "
+                             "end_marker, looping, loop_start, loop_end")
+    results = await _run_atomic(session.bridge,
+                                [{"op": "set", "path": ref["clip_path"],
+                                  "props": props}], "set_arrangement_clip")
+    values = (results[0].get("result") or {}).get("values", {})
+    if "color" in values:
+        values["color"] = colors.to_hex(values["color"])
+    return {"values": values, "view": ref.get("view")}
+
+
+async def delete_arrangement_clip(session, clip):
+    ref = await resolve.resolve_clip(session.bridge, clip)
+    if ref.get("view") != "arrangement":
+        raise ToolError("invalid_argument",
+                        "that locator points at a Session clip",
+                        hint="use delete_clip for Session slots")
+    await _run_atomic(session.bridge,
+                      [{"op": "call", "path": ref["track_path"],
+                        "method": "delete_clip",
+                        "args": [{"$obj": {"path": ref["clip_path"]}}]}],
+                      "delete_arrangement_clip")
+    return {"deleted": {"track": ref["track_index"],
+                        "arrangement": ref["arrangement_index"],
+                        "start": ref["start"]}}
 
 
 # --- structure made visible -------------------------------------------------------------

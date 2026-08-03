@@ -24,9 +24,14 @@ checks of the contract probe (`tools/wire_probe.py`) against a live instance. Ph
 was completed the same night: `server/` (package `alberton-mcp`, `mcp<2` pinned) serves
 the full Layer B catalogue — 39 tools — with 25 unit tests against an in-process fake
 bridge and a 14-check end-to-end run (`tools/live_verify.py`) against real Live, both
-green. Remaining for v1.1, recorded in CONTRACT's out-of-scope list: audio clip import,
-Arrangement-native writing, automation-envelope writing, smarter browser-cache
-invalidation. The publishing decision (§4) is still open, deliberately. The user works on macOS with Ableton Live 12.4.3 Suite and has
+green. **v1.1 landed 2026-08-03** and closed the whole out-of-scope list bar the
+deliberate exclusions: clip automation (`automate_parameter`, `clear_automation`),
+Arrangement-native writing (`create_arrangement_clip`, `set_arrangement_clip`,
+`delete_arrangement_clip`, polymorphic clip locators), audio import
+(`import_audio_clip`, validated paths), browser-cache invalidation, and a `summary`
+mode on the note-reading tools for context economy. 59 unit tests and 23 end-to-end
+checks against real Live, all green. The publishing decision (§4) is still open,
+deliberately. The user works on macOS with Ableton Live 12.4.3 Suite and has
 the existing `ableton-mcp` 1.2.0 installed and working, which is useful as a reference
 implementation and as a fallback while this project is incomplete.
 
@@ -226,6 +231,16 @@ float64 bit-exactly — verified with 1/3 triplet floats. **[verified 2026-08-03
 see that step in the undo history; one tick later it does. Batch rollback must
 therefore be deferred to the next tick — the bridge does this and only then sends the
 batch response. **[verified 2026-08-03 — this bit us]**
+
+An Arrangement clip's position is read-only: `Clip.start_time` and `end_time` have no
+setter, so a clip cannot be moved — delete and recreate it, or duplicate to the new
+time. `Track.create_midi_clip(time, length)` and `Track.create_audio_clip(path, time)`
+place clips directly in the Arrangement, and the returned `Clip` has no canonical path
+(it lives in `track.arrangement_clips`, which the bridge's `_path_of` does not scan);
+find it by matching `start_time`, which is exact because two Arrangement clips on one
+track cannot start at the same beat. Creating a clip that overlaps an existing one lets
+Live silently trim the neighbour, so the server refuses it instead.
+**[verified 2026-08-03]**
 
 Track/clip colors snap to Live's palette on write (`#FF8800` reads back `#F66C03`).
 Tools must treat the read-back as canonical. **[verified 2026-08-03]**

@@ -114,11 +114,86 @@ async def resolve_slot(bridge, track, slot):
             "has_clip": bool(has_clip) if isinstance(has_clip, bool) else False}
 
 
+async def arrangement_clips(bridge, track_path):
+    """[(index, start, end)] for a track's Arrangement clips, in time order."""
+    count = await vec_len(bridge, track_path, "arrangement_clips")
+    if count == 0:
+        return []
+    ops = [{"op": "get", "path": "%s.arrangement_clips.%d" % (track_path, i),
+            "props": ["start_time", "end_time"]} for i in range(count)]
+    result = await bridge.request("batch", ops=ops, stop_on_error=False)
+    found = []
+    for index, sub in enumerate(result["results"]):
+        if not sub.get("ok"):
+            continue
+        values = sub["result"]["values"]
+        found.append((index, values.get("start_time"), values.get("end_time")))
+    return sorted(found, key=lambda entry: (entry[1] is None, entry[1]))
+
+
+async def resolve_arrangement_clip(bridge, track, time=None, index=None):
+    track_ref = await resolve_track(bridge, track)
+    clips = await arrangement_clips(bridge, track_ref["path"])
+    if not clips:
+        raise ToolError("not_found",
+                        "track %d has no Arrangement clips" % track_ref["index"],
+                        hint="create_arrangement_clip or "
+                             "duplicate_clip_to_arrangement first")
+    if index is not None:
+        index = as_index(index)
+        ordered = [entry[0] for entry in clips]
+        if not isinstance(index, int) or not 0 <= index < len(ordered):
+            raise ToolError("not_found", "arrangement index %r out of range"
+                            % (index,),
+                            hint="track %d has %d Arrangement clips"
+                                 % (track_ref["index"], len(clips)))
+        chosen = clips[index]
+    else:
+        at = float(time)
+        inside = [e for e in clips
+                  if e[1] is not None and e[1] <= at < (e[2] if e[2] is not None
+                                                        else e[1])]
+        if inside:
+            chosen = inside[0]
+        else:
+            near = [e for e in clips
+                    if e[1] is not None and abs(e[1] - at) < 1e-6]
+            if not near:
+                listing = ", ".join("%g-%g" % (e[1], e[2]) for e in clips
+                                    if e[1] is not None)
+                raise ToolError("not_found",
+                                "no Arrangement clip at beat %g on track %d"
+                                % (at, track_ref["index"]),
+                                hint="clips occupy: %s" % (listing or "none"))
+            chosen = near[0]
+    return {"track_index": track_ref["index"], "track_path": track_ref["path"],
+            "arrangement_index": chosen[0], "start": chosen[1], "end": chosen[2],
+            "clip_path": "%s.arrangement_clips.%d" % (track_ref["path"],
+                                                      chosen[0]),
+            "view": "arrangement"}
+
+
 async def resolve_clip(bridge, clip):
-    """clip is {"track": int|str, "slot": int}; requires the slot to hold a clip."""
-    if not isinstance(clip, dict) or "track" not in clip or "slot" not in clip:
+    """Polymorphic clip locator.
+
+    {"track": t, "slot": n}        -> a Session clip
+    {"track": t, "time": beats}    -> the Arrangement clip at/containing a beat
+    {"track": t, "arrangement": n} -> an Arrangement clip by time order
+    """
+    if not isinstance(clip, dict) or "track" not in clip:
         raise ToolError("invalid_argument",
-                        "clip locator must be {\"track\": int|name, \"slot\": int}")
+                        "clip locator needs a track plus one of: slot "
+                        "(Session), time or arrangement (Arrangement)")
+    if "arrangement" in clip:
+        return await resolve_arrangement_clip(bridge, clip["track"],
+                                              index=clip["arrangement"])
+    if "time" in clip and "slot" not in clip:
+        return await resolve_arrangement_clip(bridge, clip["track"],
+                                              time=clip["time"])
+    if "slot" not in clip:
+        raise ToolError("invalid_argument",
+                        "clip locator needs 'slot' (Session) or 'time'/"
+                        "'arrangement' (Arrangement)")
     ref = await resolve_slot(bridge, clip["track"], clip["slot"])
     if not ref["has_clip"]:
         raise ToolError("not_found",
@@ -127,4 +202,5 @@ async def resolve_clip(bridge, clip):
                         hint="the slot is empty — create_clip first, or check "
                              "session_overview")
     ref["clip_path"] = ref["slot_path"] + ".clip"
+    ref["view"] = "session"
     return ref

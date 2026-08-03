@@ -10,7 +10,10 @@ restored, and everything created lives on one temp track deleted at the end.
 
 import asyncio
 import json
+import struct
 import sys
+import tempfile
+import wave
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "server" / "src"))
@@ -38,11 +41,24 @@ class Runner:
         return 1 if failed else 0
 
 
+def make_wav(path, seconds=1.0, rate=44100):
+    """A real, decodable audio file for the import checks."""
+    with wave.open(str(path), "wb") as fh:
+        fh.setnchannels(1)
+        fh.setsampwidth(2)
+        fh.setframerate(rate)
+        frames = int(rate * seconds)
+        fh.writeframes(b"".join(struct.pack("<h", int(12000 * (
+            1 if (i // 220) % 2 else -1))) for i in range(frames)))
+    return str(path)
+
+
 async def main():
     run = Runner()
     session = api.Session(Bridge())
     bridge = session.bridge
     track_index = None
+    audio_track_index = None
     original_tempo = None
     try:
         overview = await api.session_overview(session)
@@ -195,15 +211,107 @@ async def main():
                       parameter["parameter"]["value"] == 0.0,
                       json.dumps(parameter))
 
+        # --- v1.1 -------------------------------------------------------
+        print("    v1.1 checks")
+        placed = await api.create_arrangement_clip(
+            session, track=track_index, time=64.0, length=8.0,
+            name="verify arrangement", color="#8888FF",
+            notes=[{"pitch": 62, "start": 0.0, "duration": 0.5},
+                   {"pitch": 65, "start": 1.0 / 3.0, "duration": 1.0 / 3.0}],
+            signature_numerator=7, signature_denominator=4)
+        run.check("create_arrangement_clip at an absolute beat",
+                  placed["clip"]["start"] == 64.0
+                  and placed["clip"]["end"] == 72.0
+                  and len(placed["added_note_ids"]) == 2,
+                  json.dumps(placed))
+
+        by_time = await api.get_clip(session,
+                                     clip={"track": track_index, "time": 66.0},
+                                     note_summary=True)
+        run.check("locate an Arrangement clip by beat + note summary",
+                  by_time["name"] == "verify arrangement"
+                  and by_time["signature"] == "7/4"
+                  and by_time["note_summary"]["count"] == 2,
+                  json.dumps(by_time)[:400])
+
+        try:
+            await api.create_arrangement_clip(session, track=track_index,
+                                              time=68.0, length=4.0,
+                                              name="overlap")
+            run.check("overlap refused", False, "it was allowed")
+        except ToolError as exc:
+            run.check("overlap refused before Live trims anything",
+                      exc.code == "conflict", exc.message)
+
+        summary = await api.get_notes(session,
+                                      clip={"track": "Drums", "slot": 0},
+                                      summary=True)
+        stats = summary.get("summary", {})
+        per_bar = stats.get("time", {}).get("notes_per_bar", [])
+        run.check("note summary on the real drum clip",
+                  stats.get("count") == sum(per_bar) and len(per_bar) == 8
+                  and stats["grid"]["verdict"] == "quantised"
+                  and stats["time"]["bar_beats"] == 7.0
+                  # the fill bars carry more notes than the plain ones
+                  and per_bar[3] > per_bar[0] and per_bar[7] > per_bar[4],
+                  json.dumps(stats)[:500])
+        print("      drums: %s notes/bar, polyphony %s, classes %s" % (
+            stats["time"]["notes_per_bar"], stats["max_polyphony"],
+            stats["pitch"]["classes"]))
+
+        created = await api.create_audio_track(session,
+                                               name="Alberton audio verify")
+        audio_track_index = created["track"]["index"]
+        with tempfile.TemporaryDirectory() as folder:
+            wav = make_wav(Path(folder) / "alberton verify.wav")
+            imported = await api.import_audio_clip(
+                session, track=audio_track_index, file_path=wav, time=64.0,
+                name="imported wav")
+            run.check("import_audio_clip into the Arrangement",
+                      imported["clip"]["start"] == 64.0
+                      and imported["clip"]["file"] == wav
+                      and imported["clip"]["name"] == "imported wav",
+                      json.dumps(imported))
+            in_slot = await api.import_audio_clip(
+                session, track=audio_track_index, file_path=wav, slot=1,
+                name="imported slot")
+            run.check("import_audio_clip into a Session slot",
+                      in_slot["clip"]["view"] == "session"
+                      and in_slot["clip"]["slot"] == 1, json.dumps(in_slot))
+        try:
+            await api.import_audio_clip(session, track=audio_track_index,
+                                        file_path="/nope/missing.wav", time=0.0)
+            run.check("missing file refused", False, "it was accepted")
+        except ToolError as exc:
+            run.check("missing file refused before Live is asked",
+                      exc.code == "not_found", exc.message)
+
+        removed = await api.delete_arrangement_clip(
+            session, clip={"track": track_index, "time": 64.0})
+        listed = await api.list_arrangement_clips(session, track=track_index)
+        run.check("delete_arrangement_clip",
+                  removed["deleted"]["start"] == 64.0
+                  and not any(abs((c["start"] or -1) - 64.0) < 1e-6
+                              for c in listed["clips"]),
+                  json.dumps({"removed": removed, "left": listed})[:300])
+
+        refreshed = await api.browse(session, query="operator",
+                                     category="instruments", refresh=True)
+        run.check("browse refresh re-walks the index",
+                  refreshed["index"]["instruments"]["age_seconds"] < 10.0
+                  and refreshed["matches"], json.dumps(refreshed["index"]))
+
     except (ToolError, Exception) as exc:
         run.check("unexpected failure", False, repr(exc))
     finally:
         try:
             if original_tempo is not None:
                 await api.set_song(session, tempo=original_tempo)
+            for index in sorted([i for i in (audio_track_index, track_index)
+                                 if i is not None], reverse=True):
+                await api.delete_track(session, track=index)
             if track_index is not None:
-                await api.delete_track(session, track=track_index)
-                print("    cleanup: temp track deleted, tempo restored")
+                print("    cleanup: temp tracks deleted, tempo restored")
         except Exception as exc:
             print("    cleanup problem (finish by hand): %r" % exc)
         await bridge.close()

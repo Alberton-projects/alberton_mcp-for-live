@@ -41,6 +41,18 @@ def _track(name, midi=True, slots=4):
     }
 
 
+def _arrangement_clip(name, at, length, color=0x333333, midi=True, notes=None):
+    return {"__class__": "Clip", "name": name, "color": color,
+            "start_time": float(at), "end_time": float(at) + float(length),
+            "length": float(length), "muted": False,
+            "start_marker": 0.0, "end_marker": float(length),
+            "looping": False, "loop_start": 0.0, "loop_end": float(length),
+            "signature_numerator": 4, "signature_denominator": 4,
+            "is_midi_clip": midi, "is_playing": False,
+            "is_arrangement_clip": True, "notes": notes or [],
+            "automation_envelopes": [], "has_envelopes": False}
+
+
 def _browser_item(name, uri=None, children=None):
     return {"__class__": "BrowserItem", "name": name,
             "uri": uri or ("query:%s" % name),
@@ -54,6 +66,9 @@ READ_ONLY = {
     ("Track", "can_be_armed"), ("Track", "playing_slot_index"),
     ("ClipSlot", "has_clip"), ("Clip", "is_midi_clip"),
     ("Clip", "is_playing"), ("Clip", "length"),
+    # Arrangement position has no setter in Live — a clip cannot be moved
+    ("Clip", "start_time"), ("Clip", "end_time"),
+    ("Clip", "is_arrangement_clip"), ("Clip", "file_path"),
     ("Song", "is_playing"),
     ("DeviceParameter", "min"), ("DeviceParameter", "max"),
     ("DeviceParameter", "name"),
@@ -135,7 +150,8 @@ class FakeLive:
         if value is None or isinstance(value, (bool, int, float, str)):
             return value
         if isinstance(value, list):
-            elem = value[0]["__class__"] if value and isinstance(value[0], dict) \
+            # plain dicts (a clip's note records) carry no __class__
+            elem = value[0].get("__class__") if value and isinstance(value[0], dict) \
                 else None
             return {"$vec": {"class": elem, "len": len(value)}}
         if isinstance(value, dict):
@@ -211,6 +227,12 @@ class FakeBridgeServer:
             return {"id": frame_id, "ok": True, "result": result}, events
         except WireFail as exc:
             return {"id": frame_id, "ok": False, "error": exc.error}, events
+        except Exception as exc:
+            # A bug in the fake must surface as an error frame, not as a dead
+            # connection the client waits 15 s for.
+            return {"id": frame_id, "ok": False, "error": {
+                "code": "internal",
+                "message": "fake bridge raised: %r" % (exc,)}}, events
 
     def _op_ping(self, frame, events):
         return {"contract": "1.0", "script": "fake", "live": "12.4.3",
@@ -324,6 +346,16 @@ class FakeBridgeServer:
             if method == "stop_all_clips":
                 return {"value": None}
         if cls == "ClipSlot":
+            if method == "create_audio_clip":
+                if node["has_clip"]:
+                    raise WireFail("live_error", "slot already has a clip")
+                clip = _arrangement_clip("", 0.0, 4.0, midi=False)
+                clip.pop("start_time"), clip.pop("end_time")
+                clip["is_arrangement_clip"] = False
+                clip["file_path"] = args[0]
+                node["clip"] = clip
+                node["has_clip"] = True
+                return {"value": None}
             if method == "create_clip":
                 if node["has_clip"]:
                     raise WireFail("live_error", "slot already has a clip")
@@ -361,12 +393,34 @@ class FakeBridgeServer:
                 return {"value": None}
             if method == "duplicate_clip_to_arrangement":
                 clip, at = args
-                node["arrangement_clips"].append({
-                    "__class__": "Clip", "name": clip["name"],
-                    "start_time": at, "end_time": at + clip["length"],
-                    "length": clip["length"], "muted": False,
-                    "color": clip["color"]})
+                node["arrangement_clips"].append(
+                    _arrangement_clip(clip["name"], at, clip["length"],
+                                      color=clip["color"],
+                                      notes=[dict(n) for n in
+                                             clip.get("notes", [])]))
                 return {"value": {"$obj": {"class": "Clip", "path": None}}}
+            if method == "create_midi_clip":
+                at, length = args
+                if not node.get("has_midi_input"):
+                    raise WireFail("live_error", "not a MIDI track")
+                node["arrangement_clips"].append(
+                    _arrangement_clip("", at, length))
+                return {"value": {"$obj": {"class": "Clip", "path": None}}}
+            if method == "create_audio_clip":
+                path, at = args
+                if not node.get("has_audio_input"):
+                    raise WireFail("live_error", "not an audio track")
+                clip = _arrangement_clip("", at, 4.0, midi=False)
+                clip["file_path"] = path
+                node["arrangement_clips"].append(clip)
+                return {"value": {"$obj": {"class": "Clip", "path": None}}}
+            if method == "delete_clip":
+                before = len(node["arrangement_clips"])
+                node["arrangement_clips"] = [c for c in node["arrangement_clips"]
+                                             if c is not args[0]]
+                if len(node["arrangement_clips"]) == before:
+                    raise WireFail("live_error", "clip not on this track")
+                return {"value": None}
         if cls == "Clip" and method == "quantize":
             node.setdefault("quantize_calls", []).append(tuple(args))
             return {"value": None}

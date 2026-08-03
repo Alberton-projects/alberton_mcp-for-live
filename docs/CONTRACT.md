@@ -217,7 +217,11 @@ Conventions for every tool:
   `not_found`, `invalid_argument`. `hint` is actionable ("song has 4 tracks, indices
   0–3").
 - **Context economy**: overview tools accept `detail: "minimal" | "standard" | "full"`
-  (default `standard`) and never dump note arrays unless asked.
+  (default `standard`) and never dump note arrays unless asked. Since v1.1, note-bearing
+  tools also accept `summary` / `note_summary`: statistics (count, pitch range and
+  classes, notes per bar, velocity and duration spread, max polyphony, distance from a
+  grid) instead of every note. Statistics only — naming chords or keys is the client's
+  job, not this server's.
 
 ### B.1 Orientation
 
@@ -296,8 +300,23 @@ feed is one cheap call away.
 | `list_arrangement_clips` | `track?` → clips with song-absolute start/end beats |
 | `duplicate_clip_to_arrangement` | `clip, time` (song beats) |
 
-Arrangement-native creation/editing is deliberately v1.1: same note shape, times swap
-to song-absolute, no new wire ops needed (`call` covers it).
+**v1.1 (landed 2026-08-03)** — Arrangement-native writing, no new wire ops needed, as
+predicted:
+
+| Tool | Params |
+|---|---|
+| `create_arrangement_clip` | `track, time (song beats), length, name, color?, notes?, signature_*?` — refuses to overlap an existing clip |
+| `import_audio_clip` | `track, file_path, time \| slot, name?, color?` — path validated before Live is asked |
+| `set_arrangement_clip` | locator + `name, color, muted, start_marker, end_marker, looping, loop_*` |
+| `delete_arrangement_clip` | locator |
+
+The clip locator became polymorphic — `{track, slot}` (Session), `{track, time}` or
+`{track, arrangement}` (Arrangement) — so `get_clip`, `get_notes`, `edit_notes`,
+`automate_parameter` and friends work in both views unchanged.
+
+A clip's Arrangement position is **read-only** in the LOM (`start_time`/`end_time` have
+no setter), so "move" is delete-and-recreate. Recorded rather than worked around: an
+`insert`-style shuffle would have to rewrite every clip after it.
 
 ### B.8 Structure made visible
 
@@ -342,12 +361,18 @@ use), scheduled v1.1.
 
 ## Out of scope for v1 (recorded so they are choices, not oversights)
 
-- Arrangement-native writing (v1.1; wire already suffices)
-- Audio clip import (v1.1; file-path policy needed)
+- ~~Arrangement-native writing~~ — **landed 2026-08-03** (§B.7)
+- ~~Audio clip import~~ — **landed 2026-08-03**. Policy chosen with the user: any
+  absolute path, validated server-side (exists, regular file, readable, non-empty,
+  known audio extension — override the list with `ALBERTON_AUDIO_EXTENSIONS`) so
+  mistakes are structured errors rather than opaque LOM exceptions. No sandbox: the
+  server already runs with the user's own permissions.
 - ~~Automation envelope *writing*~~ — **landed 2026-08-03**, ahead of schedule, once the
   envelope API had been exercised against Live: `automate_parameter` (breakpoints in,
   step-rendered envelope out, one undo step) and `clear_automation`. `lom_set`/`lom_call`
   became batchable inside `song_batch` at the same time.
-- Browser index invalidation beyond "rebuild on demand / on server start"
+- ~~Browser index invalidation~~ — **landed 2026-08-03**: `browse(refresh=true)` and
+  `refresh_browser_index(category?)`, with the cache age reported in every `browse`
+  reply. Automatic invalidation stays out: Live exposes no browser-changed listener.
 - Any authentication on the socket (localhost bind is the boundary; revisit only if
   that ever changes)

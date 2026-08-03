@@ -71,23 +71,39 @@ async def get_track(track: Union[int, str], detail: str = "standard") -> dict:
 
 
 @mcp.tool()
-async def get_clip(clip: dict, include_notes: bool = False) -> dict:
+async def get_clip(clip: dict, include_notes: bool = False,
+                   note_summary: bool = False) -> dict:
     """Clip properties (name, color, length, loop, signature; audio extras for
-    audio clips). clip = {"track": index|name, "slot": scene_index}.
-    include_notes=true also returns all MIDI notes."""
-    return await _run(api.get_clip, clip=clip, include_notes=include_notes)
+    audio clips; Arrangement position and markers for Arrangement clips).
+
+    A clip locator is {"track": index|name} plus ONE of: "slot" (Session
+    scene index), "time" (song beats — the Arrangement clip there), or
+    "arrangement" (index in time order).
+
+    note_summary=true adds cheap statistics about the notes; include_notes=true
+    returns every note (expensive — prefer the summary to look before you
+    fetch)."""
+    return await _run(api.get_clip, clip=clip, include_notes=include_notes,
+                      note_summary=note_summary)
 
 
 @mcp.tool()
 async def get_notes(clip: dict, from_time: Optional[float] = None,
                     time_span: Optional[float] = None,
                     from_pitch: Optional[int] = None,
-                    pitch_span: Optional[int] = None) -> dict:
+                    pitch_span: Optional[int] = None,
+                    summary: bool = False, grid: float = 0.25) -> dict:
     """Notes of a MIDI clip, optionally windowed. Times are beats from the
-    clip start; every note carries its stable id (use it with edit_notes)."""
+    clip start; every note carries its stable id (use it with edit_notes).
+
+    summary=true returns statistics INSTEAD of the notes — count, pitch range
+    and pitch classes, notes per bar, velocity and duration spread, max
+    polyphony, and how far the onsets sit from `grid` (so you can tell a
+    played take from a programmed one). Start here on an unknown clip: a
+    150-note clip is a wall of JSON, its summary is a paragraph."""
     return await _run(api.get_notes, clip=clip, from_time=from_time,
                       time_span=time_span, from_pitch=from_pitch,
-                      pitch_span=pitch_span)
+                      pitch_span=pitch_span, summary=summary, grid=grid)
 
 
 @mcp.tool()
@@ -335,12 +351,22 @@ async def stop_all_clips(track: Optional[Union[int, str]] = None) -> dict:
 
 
 @mcp.tool()
-async def browse(query: str, category: Optional[str] = None) -> dict:
+async def browse(query: str, category: Optional[str] = None,
+                 refresh: bool = False) -> dict:
     """Search Live's browser for loadable items (instruments, sounds, drums,
     audio_effects, midi_effects, plugins, samples, packs, user_library).
     Returns names + uris for load_device. First search per category walks the
-    tree and may take a few seconds."""
-    return await _run(api.browse, query=query, category=category)
+    tree and may take a few seconds; later ones hit the cache. refresh=true
+    re-walks — do that after installing a pack or adding user content."""
+    return await _run(api.browse, query=query, category=category,
+                      refresh=refresh)
+
+
+@mcp.tool()
+async def refresh_browser_index(category: Optional[str] = None) -> dict:
+    """Drop the cached browser index (one category, or all) so the next browse
+    reads Live afresh."""
+    return await _run(api.refresh_browser_index, category=category)
 
 
 @mcp.tool()
@@ -431,6 +457,66 @@ async def list_arrangement_clips(track: Optional[Union[int, str]] = None) -> dic
 async def duplicate_clip_to_arrangement(clip: dict, time: float) -> dict:
     """Copy a Session clip into the Arrangement at `time` (song beats)."""
     return await _run(api.duplicate_clip_to_arrangement, clip=clip, time=time)
+
+
+@mcp.tool()
+async def create_arrangement_clip(track: Union[int, str], time: float,
+                                  length: float, name: str,
+                                  color: Optional[str] = None,
+                                  notes: Optional[list] = None,
+                                  signature_numerator: Optional[int] = None,
+                                  signature_denominator: Optional[int] = None
+                                  ) -> dict:
+    """Write a MIDI clip straight into the Arrangement — no Session slot
+    needed. `time` is song-absolute beats, `length` is beats; note times
+    inside `notes` stay clip-relative (0 = the clip's own start), exactly as
+    in create_clip. Refuses to overlap an existing clip rather than letting
+    Live silently trim it."""
+    return await _run(api.create_arrangement_clip, track=track, time=time,
+                      length=length, name=name, color=color, notes=notes,
+                      signature_numerator=signature_numerator,
+                      signature_denominator=signature_denominator)
+
+
+@mcp.tool()
+async def import_audio_clip(track: Union[int, str], file_path: str,
+                            time: Optional[float] = None,
+                            slot: Optional[int] = None,
+                            name: Optional[str] = None,
+                            color: Optional[str] = None) -> dict:
+    """Import an audio file onto an audio track: give `time` (song beats, into
+    the Arrangement) or `slot` (Session scene index) — exactly one. file_path
+    must be absolute; it is checked for existence, type and readability before
+    Live is asked, so mistakes come back as clear errors."""
+    return await _run(api.import_audio_clip, track=track, file_path=file_path,
+                      time=time, slot=slot, name=name, color=color)
+
+
+@mcp.tool()
+async def set_arrangement_clip(clip: dict, name: Optional[str] = None,
+                               color: Optional[str] = None,
+                               muted: Optional[bool] = None,
+                               start_marker: Optional[float] = None,
+                               end_marker: Optional[float] = None,
+                               looping: Optional[bool] = None,
+                               loop_start: Optional[float] = None,
+                               loop_end: Optional[float] = None) -> dict:
+    """Name, colour, mute and content trim of a clip. start_marker/end_marker
+    trim what plays, in clip-relative beats. NOTE: an Arrangement clip's
+    position is read-only in Live's API — to move one, delete and recreate it
+    at the new time."""
+    params = {k: v for k, v in dict(
+        name=name, color=color, muted=muted, start_marker=start_marker,
+        end_marker=end_marker, looping=looping, loop_start=loop_start,
+        loop_end=loop_end).items() if v is not None}
+    return await _run(api.set_arrangement_clip, clip=clip, **params)
+
+
+@mcp.tool()
+async def delete_arrangement_clip(clip: dict) -> dict:
+    """Remove a clip from the Arrangement. Locate it with
+    {"track": t, "time": beats} or {"track": t, "arrangement": index}."""
+    return await _run(api.delete_arrangement_clip, clip=clip)
 
 
 # --- structure made visible -------------------------------------------------------------------
