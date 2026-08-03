@@ -232,6 +232,19 @@ see that step in the undo history; one tick later it does. Batch rollback must
 therefore be deferred to the next tick — the bridge does this and only then sends the
 batch response. **[verified 2026-08-03 — this bit us]**
 
+**Contract 1.1 / bridge 0.2.0**, 2026-08-03 — the first change to the Remote Script
+since Phase 2, made because testing found two absences rather than because a feature
+wanted them. Both additive: `$obj` stubs now carry `ptr` (Live's own object identity)
+alongside the best-effort `path`, and the script keeps two outbound queues so answers
+are written ahead of events. The server compares only the **major** contract version, so
+an older script still works with a newer server.
+
+The priority queue is verifiable: under 1.0, a connection with a throttled receive
+buffer and 120 playhead subscriptions never answered a `ping` again; under 1.1 the same
+scenario replies within seconds while still reporting 125 overflow notices. Identity
+matters because a path is null for envelopes, Arrangement clips and device parameters,
+and because any path can be invalidated a millisecond later by a human editing in Live.
+
 Under load, measured 2026-08-03. **The main thread does not stall.** Writing 16 000
 notes takes 3.0 s end to end and a ping straight afterwards returns in 199 ms against a
 200 ms baseline; 90 s of concurrent hammering — the server storming reads and writes

@@ -1,8 +1,10 @@
 # Alberton bridge implementation — executed from disk by __init__.py.
 #
-# Implements Layer A of docs/CONTRACT.md v1.0: NDJSON over 127.0.0.1:17853,
+# Implements Layer A of docs/CONTRACT.md v1.1: NDJSON over 127.0.0.1:17853,
 # eleven generic operations over LOM object paths, batch with undo-step
-# atomicity, subscriptions with coalesce-on-tick backpressure.
+# atomicity, subscriptions with coalesce-on-tick backpressure. Object stubs
+# carry identity as well as location, and answers are written ahead of events
+# so a client cannot starve its own replies.
 #
 # Threading model (CONTRACT A.8): socket threads only move bytes. All LOM
 # access happens on Live's main thread inside update_display (~100 ms tick):
@@ -26,8 +28,8 @@ import Live
 HOST = "127.0.0.1"
 PORT = 17853
 
-CONTRACT_VERSION = "1.0"
-SCRIPT_VERSION = "0.1.1"
+CONTRACT_VERSION = "1.1"
+SCRIPT_VERSION = "0.2.0"
 
 LINE_MAX = 16 * 1024 * 1024
 BATCH_MAX = 256
@@ -123,7 +125,7 @@ class Bridge(object):
         self._lock = threading.Lock()
         self._inbox = deque()          # (generation, frame)
         self._generation = 0
-        self._client = None            # dict: conn, outq, gen, threads, alive
+        self._client = None            # dict: conn, answers, events, gen, alive
         self._pending_conn = None
         self._subs = {}                # sub_id -> sub record
         self._next_sub_id = 1
@@ -189,8 +191,8 @@ class Bridge(object):
         self._clear_subscriptions()
         self._generation += 1
         gen = self._generation
-        outq = queue.Queue()
-        client = {"conn": conn, "outq": outq, "gen": gen, "alive": [True]}
+        client = {"conn": conn, "gen": gen, "alive": [True],
+                  "answers": queue.Queue(), "events": queue.Queue()}
         reader = threading.Thread(target=self._read_loop, args=(client,),
                                   name="alberton-read-%d" % gen)
         writer = threading.Thread(target=self._write_loop, args=(client,),
@@ -216,7 +218,7 @@ class Bridge(object):
             client["conn"].close()
         except Exception:
             pass
-        client["outq"].put(None)  # writer sentinel
+        client["answers"].put(None)  # writer sentinel
         _log("client dropped (gen %d): %s" % (client["gen"], why))
 
     def _read_loop(self, client):
@@ -263,12 +265,25 @@ class Bridge(object):
         _log("read loop ended (gen %d)" % gen)
 
     def _write_loop(self, client):
-        conn, outq, alive = client["conn"], client["outq"], client["alive"]
-        while alive[0] or not outq.empty():
+        """Answers first, always.
+
+        Responses and events used to share one queue, so a client watching a
+        fast-changing property could push its own command replies behind
+        thousands of events — measured at ~3.4 s of latency at the outbox cap.
+        Two queues, responses drained first, and a client can no longer starve
+        itself.
+        """
+        conn, alive = client["conn"], client["alive"]
+        answers, events = client["answers"], client["events"]
+        while alive[0] or not answers.empty() or not events.empty():
+            item = None
             try:
-                item = outq.get(timeout=0.25)
+                item = answers.get_nowait()
             except queue.Empty:
-                continue
+                try:
+                    item = events.get(timeout=0.25)
+                except queue.Empty:
+                    continue
             if item is None:
                 break
             try:
@@ -279,10 +294,10 @@ class Bridge(object):
         _log("write loop ended (gen %d)" % client["gen"])
 
     def _send(self, client, frame, event_sub=None):
-        """Queue a frame. Responses always enqueue; events respect OUTBOX_MAX."""
+        """Queue a frame. Responses jump the queue; events respect OUTBOX_MAX."""
         if client is None:
             return False
-        if event_sub is not None and client["outq"].qsize() >= OUTBOX_MAX:
+        if event_sub is not None and client["events"].qsize() >= OUTBOX_MAX:
             sub = self._subs.get(event_sub)
             if sub is not None:
                 sub["dropped"] += 1
@@ -293,7 +308,10 @@ class Bridge(object):
         except ValueError:
             payload = (json.dumps(_scrub_nan(frame), separators=(",", ":")) +
                        "\n").encode("utf-8")
-        client["outq"].put(payload)
+        if "event" in frame:
+            client["events"].put(payload)
+        else:
+            client["answers"].put(payload)
         return True
 
     # ---- path resolution (CONTRACT A.5) ---------------------------------------
@@ -428,7 +446,17 @@ class Bridge(object):
             return {"$vec": {"class": elem_class, "len": length}}
         if _is_lom_object(value):
             path = path_hint if path_hint is not None else self._path_of(value)
-            return {"$obj": {"class": type(value).__name__, "path": path}}
+            # Identity as well as location. Many objects have no canonical path
+            # at all (envelopes, Arrangement clips, device parameters), and a
+            # path that was correct at encode time can be invalidated a
+            # millisecond later by a human editing in Live. The pointer never
+            # lies: it is what _path_of scans by, and it costs nothing to send.
+            stub = {"class": type(value).__name__, "path": path}
+            try:
+                stub["ptr"] = int(value._live_ptr)
+            except Exception:
+                pass
+            return {"$obj": stub}
         return {"$repr": repr(value)[:200], "class": type(value).__name__}
 
     def _decode(self, value):

@@ -1372,21 +1372,28 @@ async def set_device_parameter(session, track, device, parameter, value):
 AUTOMATION_MAX_STEPS = 240   # one wire batch is capped at 256 ops
 
 
+def _ptr_of(encoded):
+    """The identity inside an $obj stub, if the script sent one (contract 1.1)."""
+    if isinstance(encoded, dict) and "$obj" in encoded:
+        return encoded["$obj"].get("ptr")
+    return None
+
+
 async def _envelope_index(bridge, clip_path, param_path):
     """Index of the clip envelope belonging to a parameter.
 
-    Identity is by `_live_ptr`, not by name: two devices on one track can both
-    expose a "Filter Cutoff", and Envelope.parameter comes back as an $obj
-    stub with no canonical path.
+    Matched by object identity, never by name: two devices on one track can
+    both expose a "Filter Cutoff", and Envelope.parameter has no canonical
+    path. Since contract 1.1 the identity rides along in the stub, so one read
+    of the envelope list answers it.
     """
     values = await _gets(bridge, [(param_path, ["_live_ptr"])])
     target = (values[0] or {}).get("_live_ptr")
     count = await resolve.vec_len(bridge, clip_path, "automation_envelopes")
-    ptrs = await _gets(bridge, [("%s.automation_envelopes.%d.parameter"
-                                 % (clip_path, i), ["_live_ptr"])
-                                for i in range(count)])
-    for index, values in enumerate(ptrs):
-        if values and values.get("_live_ptr") == target:
+    stubs = await _gets(bridge, [("%s.automation_envelopes.%d" % (clip_path, i),
+                                  ["parameter"]) for i in range(count)])
+    for index, values in enumerate(stubs):
+        if values and _ptr_of(values.get("parameter")) == target:
             return index
     return None
 

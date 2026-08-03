@@ -155,7 +155,12 @@ class FakeLive:
                 else None
             return {"$vec": {"class": elem, "len": len(value)}}
         if isinstance(value, dict):
-            return {"$obj": {"class": value.get("__class__"), "path": path}}
+            stub = {"class": value.get("__class__"), "path": path}
+            if "_live_ptr" in value:
+                stub["ptr"] = value["_live_ptr"]
+            else:
+                stub["ptr"] = id(value)      # stable for the object's lifetime
+            return {"$obj": stub}
         return {"$repr": repr(value)}
 
     def decode(self, value):
@@ -235,7 +240,7 @@ class FakeBridgeServer:
                 "message": "fake bridge raised: %r" % (exc,)}}, events
 
     def _op_ping(self, frame, events):
-        return {"contract": "1.0", "script": "fake", "live": "12.4.3",
+        return {"contract": "1.1", "script": "fake", "live": "12.4.3",
                 "python": "3.11.6"}
 
     def _op_describe(self, frame, events):

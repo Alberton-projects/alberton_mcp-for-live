@@ -7,7 +7,7 @@ from alberton_mcp.bridge import Bridge, BridgeUnreachable, WireError
 
 async def test_ping_handshake(fake, session):
     result = await session.bridge.request("ping")
-    assert result["contract"] == "1.0"
+    assert result["contract"] == "1.1"
     assert session.bridge.remote_versions["live"] == "12.4.3"
 
 
@@ -42,3 +42,39 @@ async def test_unreachable_bridge():
     bridge = Bridge(host="127.0.0.1", port=1)  # nothing listens there
     with pytest.raises(BridgeUnreachable):
         await bridge.request("ping")
+
+
+async def test_a_minor_version_ahead_or_behind_still_connects(fake, session):
+    """1.1 is additive, so the major version is what has to match."""
+    fake.contract = "1.0"
+    original = fake._op_ping
+    fake._op_ping = lambda frame, events: dict(original(frame, events),
+                                               contract="1.0")
+    try:
+        await session.bridge.close()
+        await session.bridge.request("ping")
+    finally:
+        fake._op_ping = original
+    assert session.bridge.contract == "1.0"
+
+
+async def test_a_different_major_version_is_refused(fake, session):
+    original = fake._op_ping
+    fake._op_ping = lambda frame, events: dict(original(frame, events),
+                                               contract="2.0")
+    try:
+        await session.bridge.close()
+        with pytest.raises(BridgeUnreachable) as excinfo:
+            await session.bridge.request("ping")
+    finally:
+        fake._op_ping = original
+    assert "reinstall" in str(excinfo.value)
+
+
+async def test_object_stubs_carry_identity(session):
+    """Contract 1.1: a path can go stale, the pointer cannot."""
+    described = await session.bridge.request("describe", path="song")
+    stub = described["props"]["master_track"]["$obj"]
+    assert isinstance(stub["ptr"], int)
+    again = await session.bridge.request("describe", path="song")
+    assert again["props"]["master_track"]["$obj"]["ptr"] == stub["ptr"]

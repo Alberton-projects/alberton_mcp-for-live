@@ -155,14 +155,14 @@ def overflow_check(run):
                       all("sub" in f and "seq" in f for f in overflows),
                       json.dumps(overflows[:3]))
 
-        # A drowned connection cannot answer: its response queues behind the
-        # backlog, and events keep arriving faster than a throttled socket
-        # drains. What matters is that the script itself is unharmed.
+        # Contract 1.1: answers are written ahead of events, so even a
+        # connection drowning in its own subscriptions still gets replies.
+        # Under 1.0 this ping went unanswered indefinitely.
         send({"id": 900, "op": "ping"})
-        starved = not [f for f in read_frames(6.0) if f.get("id") == 900]
-        run.check("a saturated connection starves its own responses (expected)",
-                  starved, "it answered — the backlog cleared faster than "
-                           "events arrived, so this run proved nothing")
+        answered = [f for f in read_frames(6.0) if f.get("id") == 900]
+        run.check("answers outrank events: a saturated connection still replies",
+                  bool(answered),
+                  "no reply within 6 s — the priority queue is not working")
         sock.close()
         fresh = socket.create_connection((HOST, PORT), timeout=5.0)
         fresh.settimeout(5.0)

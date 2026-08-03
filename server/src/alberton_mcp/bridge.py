@@ -12,7 +12,8 @@ from collections import deque
 
 DEFAULT_HOST = os.environ.get("ALBERTON_HOST", "127.0.0.1")
 DEFAULT_PORT = int(os.environ.get("ALBERTON_PORT", "17853"))
-CONTRACT_VERSION = "1.0"
+CONTRACT_VERSION = "1.1"
+CONTRACT_MAJOR = "1"
 LINE_LIMIT = 16 * 1024 * 1024 + 1024
 REQUEST_TIMEOUT = 15.0
 FEED_MAXLEN = 10000
@@ -98,11 +99,16 @@ class Bridge:
             self._reader_task = asyncio.get_running_loop().create_task(
                 self._read_loop(reader))
             versions = await self.request("ping")
-            if versions.get("contract") != CONTRACT_VERSION:
+            # Minor versions are additive by definition (CONTRACT 1.1), so an
+            # older script still works — it just cannot offer what it lacks.
+            spoken = str(versions.get("contract", ""))
+            if spoken.split(".")[0] != CONTRACT_MAJOR:
                 await self.close()
                 raise BridgeUnreachable(
-                    "contract mismatch: bridge speaks %r, server needs %r"
-                    % (versions.get("contract"), CONTRACT_VERSION))
+                    "contract mismatch: the Remote Script speaks %r, this "
+                    "server needs %s.x — reinstall remote_script/Alberton_MCP "
+                    "and restart Live" % (spoken, CONTRACT_MAJOR))
+            self.contract = spoken
             self.remote_versions = versions
             self.epoch += 1
 

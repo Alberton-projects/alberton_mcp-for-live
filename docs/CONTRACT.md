@@ -1,6 +1,9 @@
 # Contract — wire protocol and MCP tool catalogue
 
-Version 1.0 — frozen 2026-08-02 after user review. Designed against
+Version 1.1 — 2026-08-03. Two additive changes to Layer A after testing found their
+absence: `$obj` stubs carry `ptr`, and answers are written ahead of events. Both are
+backward compatible; a 1.0 client ignoring `ptr` behaves as before. Version 1.0 was
+frozen 2026-08-02 after user review. Designed against
 `docs/lom-inventory.md` (Live 12.4.3, embedded Python 3.11.6). Decisions of record:
 subscriptions ship in v1; the generic LOM escape hatches are exposed to the model for
 read and write; v1 write scope is Session-first (Arrangement-native writing is v1.1).
@@ -66,7 +69,7 @@ Event (script → server, subscriptions only; has no `id`, carries `sub`):
 |---|---|
 | int / float / bool / str / None | native JSON (`None` → `null`) |
 | Boost enum value | integer (names and values are in the inventory) |
-| LOM object | `{"$obj": {"class": "Track", "path": "song.tracks.0"}}` |
+| LOM object | `{"$obj": {"class": "Track", "path": "song.tracks.0", "ptr": 4933587424}}` — `path` is best-effort and null for objects with no canonical location (envelopes, Arrangement clips, device parameters); `ptr` is Live's own object identity and is always present. Prefer `ptr` when a path could have gone stale: a human editing in Live invalidates indices between one op and the next |
 | LOM vector | `{"$vec": {"class": "Track", "len": 4}}` (elements addressable by path index) |
 | anything else | `{"$repr": "<...>", "class": "..."}` — should not appear; file a gap |
 
@@ -164,13 +167,16 @@ Event semantics (backpressure by design):
   re-reads via `get` to resynchronize. Verified 2026-08-03 by throttling a client's
   receive buffer and subscribing 120 times to the playhead: 40 overflow notices, each
   naming what it dropped, while 4 076 changes still arrived.
-- **Client obligation: drain continuously.** Responses and events share one outbound
-  queue, so a client that stops reading — or that subscribes to more than it can keep
-  up with — starves its own command responses behind the backlog. Measured in the same
-  run: the drowned connection never answered a `ping`, while a fresh connection to the
-  same script answered at once. The bridge is unharmed; the saturation is per
-  connection, and reconnecting clears it. `song.current_song_time` is the one property
-  that fires every tick while the transport rolls, so it dominates any event budget.
+- **Answers outrank events** (since 1.1). The script keeps two outbound queues and
+  drains responses first, so a client can never push its own command replies behind its
+  own subscriptions. Under 1.0 they shared a queue and a saturated connection stopped
+  answering entirely — measured at roughly 3.4 s of added latency at the outbox cap,
+  against a 15 s request timeout.
+- **Client obligation: drain continuously.** Events still queue, so a client that stops
+  reading will lose events to `overflow` and eventually stall its own socket. The
+  bridge is unharmed either way; saturation is per connection and reconnecting clears
+  it. `song.current_song_time` is the one property that fires every tick while the
+  transport rolls, so it dominates any event budget.
 - If the subscribed object dies (track deleted), the script emits `gone` and frees the
   subscription — **best-effort only**. Verified against Live 12.4.3: detection is
   passive, because the script can only notice a dead object while servicing a listener

@@ -17,8 +17,8 @@ in HANDOFF, the *spec* in CONTRACT.
 
 | | |
 |---|---|
-| Contract | 1.0, frozen |
-| Remote Script | `remote_script/Alberton_MCP/`, v0.1.1 — unchanged since Phase 2 |
+| Contract | 1.1 (additive; major version is what must match) |
+| Remote Script | `remote_script/Alberton_MCP/`, v0.2.0 |
 | Server | `server/`, package `alberton-mcp` 0.1.0, 46 tools, `mcp<2` pinned |
 | Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 |
 | Published | No. Publication is deliberately the last step. |
@@ -27,8 +27,8 @@ in HANDOFF, the *spec* in CONTRACT.
 
 | Suite | Needs Live | Checks |
 |---|---|---|
-| `server/tests/` (pytest) | no | 104 |
-| `tools/wire_probe.py` | yes | 34 |
+| `server/tests/` (pytest) | no | 107 |
+| `tools/wire_probe.py` | yes | 36 |
 | `tools/live_verify.py` | yes | 23 |
 | `tools/lifecycle_probe.py` | yes | 23 (+4 manual) |
 | `tools/functional_suite.py` | yes | 51, and **46/46 tools exercised** |
@@ -67,6 +67,16 @@ Ordered by what a stranger would hit first.
 ---
 
 ## Log
+
+### 2026-08-03 — bridge 0.2.0, contract 1.1
+
+- `7b8549f` **The first Remote Script change since Phase 2**, and only because testing found
+  two absences. `$obj` stubs carry `ptr` — Live's object identity — beside the
+  best-effort `path`, which is null for envelopes, Arrangement clips and parameters and
+  can go stale whenever a human edits. Answers are written ahead of events, so a client
+  can no longer starve its own replies with its own subscriptions: the 1.0 scenario that
+  left a connection permanently mute now answers in seconds. The server checks only the
+  major contract version, so an older script keeps working.
 
 ### 2026-08-03 — under load, and with a human in the way
 

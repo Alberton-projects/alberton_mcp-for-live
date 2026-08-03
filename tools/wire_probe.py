@@ -123,8 +123,10 @@ def main():
         resp = wire.request("ping")
         run.check("ping ok", ok(resp), json.dumps(resp))
         result = resp.get("result", {})
-        run.check("contract version 1.0", result.get("contract") == "1.0",
+        run.check("contract major version 1",
+                  str(result.get("contract", "")).split(".")[0] == "1",
                   str(result))
+        contract_minor = int(str(result.get("contract", "1.0")).split(".")[1])
         print("    bridge: script %s · Live %s · Python %s" % (
             result.get("script"), result.get("live"), result.get("python")))
 
@@ -136,6 +138,19 @@ def main():
                   json.dumps(resp)[:300])
         run.check("describe encodes vectors", isinstance(props.get("tracks"), dict)
                   and "$vec" in props.get("tracks", {}), str(props.get("tracks")))
+
+        if contract_minor >= 1:
+            # 1.1: object stubs carry identity as well as location, because a
+            # path can be null or can go stale between one op and the next.
+            stub = (props.get("master_track") or {}).get("$obj") or {}
+            run.check("object stubs carry a stable ptr (1.1)",
+                      isinstance(stub.get("ptr"), int), json.dumps(stub))
+            second = wire.request("describe", path="song")
+            again = ((second.get("result", {}).get("props", {})
+                      .get("master_track") or {}).get("$obj") or {})
+            run.check("the same object reports the same ptr (1.1)",
+                      stub.get("ptr") == again.get("ptr"),
+                      "%s vs %s" % (stub.get("ptr"), again.get("ptr")))
 
         # 3. get
         resp = wire.request("get", path="song", props=["tempo", "is_playing"])
