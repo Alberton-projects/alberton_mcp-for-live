@@ -2,6 +2,12 @@
 
 Project rules for this repository. Read on every session; keep it short.
 
+## Where things are written down
+
+`docs/SESSION-LOG.md` is the index: current state, what is open, and what changed when.
+Read it first. Reasoning and verified Live behaviours go in `docs/HANDOFF.md`, the spec
+in `docs/CONTRACT.md`, durable rules here.
+
 ## What this is
 
 An MCP server plus a companion Ableton Live Remote Script that let an LLM read and write
