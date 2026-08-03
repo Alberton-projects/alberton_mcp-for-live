@@ -18,6 +18,10 @@ space breaks the import); Live's Control Surface list renders it as "Alberton MC
 Use only this location (not the one under `~/Library/Preferences/Ableton/...`): two
 copies produce duplicate Control Surface entries and a port clash.
 
+macOS only, so far. On Windows the folder is
+`%USERPROFILE%\Documents\Ableton\User Library\Remote Scripts\` — untested; see the
+scope note in the top-level README.
+
 ## Run
 
 1. Restart Live (it only scans Remote Scripts at startup).

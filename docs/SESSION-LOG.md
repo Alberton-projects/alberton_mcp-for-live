@@ -20,7 +20,7 @@ in HANDOFF, the *spec* in CONTRACT.
 | Contract | 1.1 (additive; major version is what must match) |
 | Remote Script | `remote_script/Alberton_MCP/`, v0.2.0 |
 | Server | `server/`, package `alberton-mcp` 0.1.0, 46 tools, `mcp<2` pinned |
-| Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 |
+| Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 — and the README now says so, promising nothing more |
 | Published | No. Publication is deliberately the last step. |
 
 **Tests, all green:**
@@ -43,24 +43,21 @@ in HANDOFF, the *spec* in CONTRACT.
 
 Ordered by what a stranger would hit first.
 
-1. **Stress under human hands** — audio rolling while parameters are moved by hand and
-   the server writes at the same time. Mostly level 2 (it is what finally exercises
-   subscription overflow), but it adds an axis nothing has tested: every suite so far
-   assumed the user was not touching Live.
-2. **Level 2 testing** — the declared limits: a batch of exactly 256 and 257 ops, a clip
-   near the 20 000-note ceiling, subscription event overflow. UI blocking is already
-   answered: measured on a 29-track set, Live stayed responsive throughout.
-3. **Two degenerate cases need a human**: a group track (Cmd-G) and a frozen track.
-   Live exposes neither to the LOM, so `degenerate_probe.py` skips them.
-2. **Level 3, portability** — only Live 12.4.3 Suite on macOS has ever been tested.
-   Either test Live 11 / other 12.x / Windows, or state the supported scope in the
-   README and promise nothing more.
-2. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
+1. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
    this last, once the README has stopped moving.
+
+Everything else on this list is done. Testing found, in order: the stringified-locator
+bug, twelve unusable tool descriptions, a stale watch registry, a `gone` event that never
+arrives, an orientation call costing 17 000 tokens, fifteen tools never run against Live,
+two opaque errors, a race with a human editing at the same moment, and notes silently
+written to a frozen track. None of them were predicted.
 
 ## Open — undecided
 
 - Whether to publish, and where (§4 of HANDOFF). Current intent: yes, but last.
+- Widening the supported scope. Only Live 12.4.3 Suite on macOS Apple Silicon has ever
+  been tested; the user cannot currently test Windows or Live 11, so the README states
+  that scope and promises nothing beyond it. Revisit when someone reports otherwise.
 - GitHub repository with a GitLab mirror; the user's existing scripts move in first.
 - One LinkedIn article per thing published to the repository.
 
@@ -70,7 +67,7 @@ Ordered by what a stranger would hit first.
 
 ### 2026-08-03 — group and frozen tracks
 
-- `0062a75` **The two states the LOM cannot create**, made by hand and then probed. Groups
+- `8b15e9f` **The two states the LOM cannot create**, made by hand and then probed. Groups
   read correctly and their children point at the parent by identity — both children
   return the same `ptr` from different paths, contract 1.1 paying off the day it
   shipped. Frozen tracks refuse clip creation but **accept note writes**, which Live's
@@ -80,7 +77,7 @@ Ordered by what a stranger would hit first.
 
 ### 2026-08-03 — bridge 0.2.0, contract 1.1
 
-- `7b8549f` **The first Remote Script change since Phase 2**, and only because testing found
+- `b79594b` **The first Remote Script change since Phase 2**, and only because testing found
   two absences. `$obj` stubs carry `ptr` — Live's object identity — beside the
   best-effort `path`, which is null for envelopes, Arrangement clips and parameters and
   can go stale whenever a human edits. Answers are written ahead of events, so a client
@@ -90,7 +87,7 @@ Ordered by what a stranger would hit first.
 
 ### 2026-08-03 — under load, and with a human in the way
 
-- `db5a078` **Level 2 and stress**: the declared ceilings provoked deliberately (batch 256
+- `184c921` **Level 2 and stress**: the declared ceilings provoked deliberately (batch 256
   and 257, 16 000 notes, 128 subscriptions, event overflow) and a 90 s session with the
   server hammering while the user played. Nothing broke: 0 disconnects, 0 stalls, no
   audible dropouts, ping 199 ms right after a 16 000-note write. Overflow behaves as
@@ -101,7 +98,7 @@ Ordered by what a stranger would hit first.
 
 ### 2026-08-03 — degenerate material
 
-- `5e1abef` **Degenerate probe**: empty tracks and clips, awkward names, values at their
+- `15b2896` **Degenerate probe**: empty tracks and clips, awkward names, values at their
   limits, nonsense locators. 43 checks. Two bugs: `edit_notes` passed Live's opaque
   "All given IDs must be present" straight through, and `session_overview(detail='full')`
   returned early when there were no Session slots to probe, so it never reported the
