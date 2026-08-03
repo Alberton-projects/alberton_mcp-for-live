@@ -63,7 +63,7 @@ Ordered by what a stranger would hit first.
 
 ### 2026-08-03 — reaching the whole set
 
-- `b83ce79` **Locators cover everything**: the track locator now reaches return tracks and
+- `9cb8b77` **Locators cover everything**: the track locator now reaches return tracks and
   the master (`"master"`, `"return:0"`, `"return:A-Reverb"`, or their own names — the
   master is called "Main"), with guards so a return is never deleted through the regular
   track vector. The device locator descends into racks with a slash path
