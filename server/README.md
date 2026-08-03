@@ -40,9 +40,19 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`
 uv run --project server pytest
 ```
 
-The suite runs against an in-process fake bridge (real TCP, real framing).
-End-to-end verification against a live Ableton instance:
+65 tests, no Ableton required — they run against an in-process fake bridge
+(real TCP, real framing), plus a smoke test that boots the server over a real
+stdio transport and checks every tool's schema and its behaviour when Live is
+absent. This is the CI suite.
+
+With Live open, from the repository root:
 
 ```
-python3 tools/live_verify.py        # from the repository root, Live open
+python3 tools/wire_probe.py         # 34 checks: the bridge against CONTRACT 1.0
+python3 tools/live_verify.py        # 23 checks: the tools, end to end
+python3 tools/lifecycle_probe.py    # 23 checks: dropped connections, garbage, churn
 ```
+
+`lifecycle_probe.py --manual` adds the checks that need Live restarted or the
+Control Surface toggled; it prompts for each step. All three leave the set as
+they found it.

@@ -219,13 +219,16 @@ async def set_track(track: Union[int, str], name: Optional[str] = None,
 
 @mcp.tool()
 async def delete_track(track: Union[int, str]) -> dict:
-    """Delete a track (undoable in Live with one Cmd-Z)."""
+    """Delete a track and everything on it — clips, devices, automation.
+    One undo step, so Cmd-Z in Live brings it all back."""
     return await _run(api.delete_track, track=track)
 
 
 @mcp.tool()
 async def duplicate_track(track: Union[int, str]) -> dict:
-    """Duplicate a track; the copy lands right after the original."""
+    """Duplicate a track with its devices and clips. The copy lands
+    immediately after the original, so every later track shifts up by one —
+    re-read indices (or use names) before addressing them again."""
     return await _run(api.duplicate_track, track=track)
 
 
@@ -268,7 +271,9 @@ async def set_clip(clip: dict, name: Optional[str] = None,
 
 @mcp.tool()
 async def delete_clip(clip: dict) -> dict:
-    """Remove the clip from its Session slot."""
+    """Empty a Session slot. Takes a Session locator
+    ({"track": index|name, "slot": scene_index}); for the Arrangement use
+    delete_arrangement_clip instead."""
     return await _run(api.delete_clip, clip=clip)
 
 
@@ -306,44 +311,55 @@ async def quantize_clip(clip: dict, grid: float, amount: float = 1.0) -> dict:
 @mcp.tool()
 async def create_scene(index: int = -1, name: Optional[str] = None,
                        color: Optional[str] = None) -> dict:
-    """New scene (index -1 = append), named/colored atomically."""
+    """Insert a scene (a row of Session slots across all tracks).
+    index -1 appends at the end; any other index inserts there and pushes the
+    scenes below it down. Named and coloured in the same undo step."""
     return await _run(api.create_scene, index=index, name=name, color=color)
 
 
 @mcp.tool()
 async def set_scene(scene: Union[int, str], name: Optional[str] = None,
                     color: Optional[str] = None) -> dict:
-    """Rename/recolor a scene (index or exact name)."""
+    """Rename or recolour a scene, located by index or exact name. Scene
+    names show in Live's master track column and are the cheapest way to make
+    a song's sections readable."""
     return await _run(api.set_scene, scene=scene, name=name, color=color)
 
 
 @mcp.tool()
 async def delete_scene(scene: Union[int, str]) -> dict:
-    """Delete a scene."""
+    """Delete a scene and every clip in that row, across all tracks. The
+    scenes below it move up by one."""
     return await _run(api.delete_scene, scene=scene)
 
 
 @mcp.tool()
 async def fire_scene(scene: Union[int, str]) -> dict:
-    """Launch a scene (respects launch quantization)."""
+    """Launch every clip in a scene at once. Live waits for the next
+    launch-quantization boundary, so nothing is heard until that beat
+    arrives — this returns immediately, before the sound starts."""
     return await _run(api.fire_scene, scene=scene)
 
 
 @mcp.tool()
 async def fire_clip(clip: dict) -> dict:
-    """Launch a Session clip."""
+    """Launch one Session clip. Live waits for the next launch-quantization
+    boundary, so this returns before the clip is actually heard."""
     return await _run(api.fire_clip, clip=clip)
 
 
 @mcp.tool()
 async def stop_clip(clip: dict) -> dict:
-    """Stop the clip playing in this track (slot stop button)."""
+    """Stop whatever is playing on that track — the slot's stop button.
+    Respects launch quantization, like firing does."""
     return await _run(api.stop_clip, clip=clip)
 
 
 @mcp.tool()
 async def stop_all_clips(track: Optional[Union[int, str]] = None) -> dict:
-    """Stop all Session clips (of one track, or of the whole song)."""
+    """Stop every Session clip: on one track if `track` is given, otherwise
+    across the whole set. Does not stop the transport — use
+    transport(action='stop') for that."""
     return await _run(api.stop_all_clips, track=track)
 
 
@@ -434,7 +450,8 @@ async def watch(path: str, props: list) -> dict:
 
 @mcp.tool()
 async def unwatch(watch_id: int) -> dict:
-    """Cancel a watch created by watch()."""
+    """Cancel a watch created by watch(), using the watch_id it returned.
+    Watches also die on their own when the connection to Live drops."""
     return await _run(api.unwatch, watch_id=watch_id)
 
 
@@ -443,7 +460,9 @@ async def unwatch(watch_id: int) -> dict:
 
 @mcp.tool()
 async def show_view(view: str) -> dict:
-    """Bring 'session' or 'arrangement' view to front in Live."""
+    """Bring Live's 'session' or 'arrangement' view to the front. Purely
+    cosmetic — every tool works regardless of which view is showing — but it
+    helps a human follow along with what is being built."""
     return await _run(api.show_view, view=view)
 
 
