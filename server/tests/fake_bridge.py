@@ -11,9 +11,14 @@ import copy
 import json
 
 
+_next_ptr = [1000]
+
+
 def _param(name, value=0.0, lo=0.0, hi=1.0, display=0.0):
+    _next_ptr[0] += 1
     return {"__class__": "DeviceParameter", "name": name, "value": value,
-            "min": lo, "max": hi, "display_value": display}
+            "min": lo, "max": hi, "display_value": display,
+            "_live_ptr": _next_ptr[0]}
 
 
 def _track(name, midi=True, slots=4):
@@ -328,7 +333,8 @@ class FakeBridgeServer:
                                 "signature_numerator": 4,
                                 "signature_denominator": 4,
                                 "is_midi_clip": True, "is_playing": False,
-                                "notes": []}
+                                "notes": [], "automation_envelopes": [],
+                                "has_envelopes": False}
                 node["has_clip"] = True
                 return {"value": None}
             if method == "delete_clip":
@@ -364,6 +370,42 @@ class FakeBridgeServer:
         if cls == "Clip" and method == "quantize":
             node.setdefault("quantize_calls", []).append(tuple(args))
             return {"value": None}
+        if cls == "Clip" and method == "create_automation_envelope":
+            param = args[0]
+            for envelope in node["automation_envelopes"]:
+                if envelope["parameter"] is param:
+                    # mirrors Live 12.4.3: this is NOT idempotent
+                    raise WireFail("live_error",
+                                   "There is already an envelope for the "
+                                   "parameter")
+            node["automation_envelopes"].append(
+                {"__class__": "Envelope", "parameter": param, "steps": []})
+            node["has_envelopes"] = True
+            return {"value": {"$obj": {"class": "Envelope", "path": None}}}
+        if cls == "Clip" and method == "clear_all_envelopes":
+            node["automation_envelopes"] = []
+            node["has_envelopes"] = False
+            return {"value": None}
+        if cls == "Clip" and method == "clear_envelope":
+            node["automation_envelopes"] = [
+                e for e in node["automation_envelopes"]
+                if e["parameter"] is not args[0]]
+            node["has_envelopes"] = bool(node["automation_envelopes"])
+            return {"value": None}
+        if cls == "Envelope":
+            if method == "insert_step":
+                time, span, value = args
+                node["steps"] = [s for s in node["steps"]
+                                 if not (time <= s[0] < time + span)]
+                node["steps"].append((float(time), float(span), float(value)))
+                node["steps"].sort()
+                return {"value": None}
+            if method == "value_at_time":
+                at = args[0]
+                for start, span, value in node["steps"]:
+                    if start <= at < start + span:
+                        return {"value": value}
+                return {"value": None}
         if cls == "Browser" and method == "load_item":
             item = args[0]
             selected = song["view"].get("selected_track")

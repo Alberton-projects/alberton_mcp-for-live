@@ -363,6 +363,38 @@ async def set_device_parameter(track: Union[int, str],
                       parameter=parameter, value=value)
 
 
+# --- clip automation ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def automate_parameter(clip: dict, device: Union[int, str],
+                             parameter: Union[int, str], points: list,
+                             resolution: float = 0.5,
+                             mode: str = "ramp") -> dict:
+    """Write clip automation for a device parameter from a few breakpoints.
+
+    You describe the SHAPE, the server renders it: points is
+    [{"time": beats, "value": n}, ...] in the parameter's own units (see
+    get_track detail='full' for min/max). mode 'ramp' interpolates linearly
+    between breakpoints and samples every `resolution` beats; mode 'hold'
+    keeps each value until the next breakpoint. The device must be on the
+    clip's own track. Values are clamped to the parameter's range. The shape
+    is one undo step (creating the envelope the first time is a separate
+    small one). Max 240 steps per call — raise `resolution` for long spans."""
+    return await _run(api.automate_parameter, clip=clip, device=device,
+                      parameter=parameter, points=points,
+                      resolution=resolution, mode=mode)
+
+
+@mcp.tool()
+async def clear_automation(clip: dict, device: Optional[Union[int, str]] = None,
+                           parameter: Optional[Union[int, str]] = None) -> dict:
+    """Remove clip automation: one parameter (give device + parameter), or
+    every envelope in the clip (give neither)."""
+    return await _run(api.clear_automation, clip=clip, device=device,
+                      parameter=parameter)
+
+
 # --- watches --------------------------------------------------------------------------------
 
 
@@ -430,7 +462,8 @@ async def song_batch(calls: list, stop_on_error: bool = True) -> dict:
     [{"tool": name, "params": {...}}, ...]. Batchable: set_song, set_track,
     set_clip, set_scene, edit_notes, create_clip, create_scene,
     create_midi_track, create_audio_track, quantize_clip, fire_clip,
-    fire_scene, stop_clip, transport. Locators resolve before execution:
+    fire_scene, stop_clip, transport, lom_set, lom_call. Locators resolve
+    before execution:
     when creating tracks/scenes and then filling them in the same batch,
     pass explicit indices."""
     return await _run(api.song_batch, calls=calls, stop_on_error=stop_on_error)

@@ -344,8 +344,10 @@ use), scheduled v1.1.
 
 - Arrangement-native writing (v1.1; wire already suffices)
 - Audio clip import (v1.1; file-path policy needed)
-- Automation envelope *writing* (reachable via `lom_call` for experiments; dedicated
-  tool once the envelope API is exercised)
+- ~~Automation envelope *writing*~~ — **landed 2026-08-03**, ahead of schedule, once the
+  envelope API had been exercised against Live: `automate_parameter` (breakpoints in,
+  step-rendered envelope out, one undo step) and `clear_automation`. `lom_set`/`lom_call`
+  became batchable inside `song_batch` at the same time.
 - Browser index invalidation beyond "rebuild on demand / on server start"
 - Any authentication on the socket (localhost bind is the boundary; revisit only if
   that ever changes)

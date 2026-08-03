@@ -414,6 +414,28 @@ async def lom_set(session, path, props):
     return await session.bridge.request("set", path=path, props=props)
 
 
+async def _c_lom_set(session, params):
+    described = await session.bridge.request("describe", path=params.get("path"))
+    class_name = described.get("class")
+    for prop in params.get("props") or {}:
+        if inventory.writable(class_name, prop) is False:
+            raise ToolError("property_read_only",
+                            "%s.%s is read-only" % (class_name, prop))
+    return [{"op": "set", "path": params["path"], "props": params["props"]}]
+
+
+async def _c_lom_call(session, params):
+    described = await session.bridge.request("describe", path=params.get("path"))
+    class_name = described.get("class")
+    method = params.get("method")
+    if inventory.has_method(class_name, method) is False:
+        raise ToolError("method_not_found",
+                        "%s has no method '%s'" % (class_name, method))
+    return [{"op": "call", "path": params["path"], "method": method,
+             "args": params.get("args") or [],
+             "kwargs": params.get("kwargs") or {}}]
+
+
 async def lom_call(session, path, method, args=None, kwargs=None):
     described = await session.bridge.request("describe", path=path)
     class_name = described.get("class")
@@ -714,6 +736,8 @@ BATCHABLE_TOOLS = {
     "fire_scene": _c_fire_scene,
     "stop_clip": _c_stop_clip,
     "transport": _c_transport,
+    "lom_set": _c_lom_set,
+    "lom_call": _c_lom_call,
 }
 
 
@@ -1056,6 +1080,163 @@ async def set_device_parameter(session, track, device, parameter, value):
                                       ["value", "display_value", "min", "max",
                                        "name"])])
     return {"parameter": read_back[0], "written": result["values"]}
+
+
+# --- clip automation ------------------------------------------------------------------
+
+AUTOMATION_MAX_STEPS = 240   # one wire batch is capped at 256 ops
+
+
+async def _envelope_index(bridge, clip_path, param_path):
+    """Index of the clip envelope belonging to a parameter.
+
+    Identity is by `_live_ptr`, not by name: two devices on one track can both
+    expose a "Filter Cutoff", and Envelope.parameter comes back as an $obj
+    stub with no canonical path.
+    """
+    values = await _gets(bridge, [(param_path, ["_live_ptr"])])
+    target = (values[0] or {}).get("_live_ptr")
+    count = await resolve.vec_len(bridge, clip_path, "automation_envelopes")
+    ptrs = await _gets(bridge, [("%s.automation_envelopes.%d.parameter"
+                                 % (clip_path, i), ["_live_ptr"])
+                                for i in range(count)])
+    for index, values in enumerate(ptrs):
+        if values and values.get("_live_ptr") == target:
+            return index
+    return None
+
+
+def _render_steps(points, resolution, mode, lo, hi):
+    """Breakpoints -> a tiling of constant steps covering [first, last].
+
+    The caller describes the SHAPE (a few breakpoints); the server renders it,
+    because Live's only writable envelope primitive is insert_step and
+    EnvelopeEvent objects cannot be constructed over the wire.
+    """
+    def clamp(value):
+        return max(lo, min(hi, float(value)))
+
+    steps = []
+    if mode == "hold":
+        for index, point in enumerate(points):
+            end = (points[index + 1]["time"] if index + 1 < len(points)
+                   else point["time"] + resolution)
+            span = max(end - point["time"], 1e-6)
+            steps.append((point["time"], span, clamp(point["value"])))
+        return steps
+    for index in range(len(points) - 1):
+        a, b = points[index], points[index + 1]
+        span = b["time"] - a["time"]
+        if span <= 0:
+            continue
+        count = max(1, int(round(span / resolution)))
+        width = span / count
+        for k in range(count):
+            t = a["time"] + k * width
+            ratio = (t - a["time"]) / span
+            steps.append((t, width,
+                          clamp(a["value"] + (b["value"] - a["value"]) * ratio)))
+    last = points[-1]
+    steps.append((last["time"], resolution, clamp(last["value"])))
+    return steps
+
+
+async def automate_parameter(session, clip, device, parameter, points,
+                             resolution=0.5, mode="ramp"):
+    bridge = session.bridge
+    if mode not in ("ramp", "hold"):
+        raise ToolError("invalid_argument", "mode must be 'ramp' or 'hold'")
+    if not isinstance(points, list) or not points:
+        raise ToolError("invalid_argument",
+                        "points must be [{\"time\": beats, \"value\": n}, ...]")
+    shaped = []
+    for index, point in enumerate(points):
+        if not isinstance(point, dict) or "time" not in point \
+                or "value" not in point:
+            raise ToolError("invalid_argument",
+                            "points[%d] needs 'time' and 'value'" % index)
+        shaped.append({"time": _require_number(point["time"],
+                                               "points[%d].time" % index, lo=0),
+                       "value": _require_number(point["value"],
+                                                "points[%d].value" % index)})
+    shaped.sort(key=lambda p: p["time"])
+    resolution = _require_number(resolution, "resolution")
+    if resolution <= 0:
+        raise ToolError("invalid_argument", "resolution must be > 0 beats")
+
+    clip_ref = await resolve.resolve_clip(bridge, clip)
+    device_ref = await resolve.resolve_device(bridge, clip_ref["track_path"],
+                                              device)
+    param_ref = await resolve.resolve_parameter(bridge, device_ref["path"],
+                                                parameter)
+    bounds = await _gets(bridge, [(param_ref["path"], ["min", "max", "name"])])
+    bounds = bounds[0] or {}
+    lo = bounds.get("min", 0.0)
+    hi = bounds.get("max", 1.0)
+
+    steps = _render_steps(shaped, resolution, mode, lo, hi)
+    if len(steps) > AUTOMATION_MAX_STEPS:
+        raise ToolError("too_large",
+                        "%d steps exceed the %d-per-call limit"
+                        % (len(steps), AUTOMATION_MAX_STEPS),
+                        hint="raise `resolution` (e.g. %.2f) or automate a "
+                             "shorter span"
+                             % (resolution * len(steps) / AUTOMATION_MAX_STEPS))
+
+    # Live's create_automation_envelope is NOT idempotent: it raises
+    # "There is already an envelope for the parameter". Look first, create
+    # only if missing — that creation is its own small undo step; the shape
+    # below is always exactly one.
+    index = await _envelope_index(bridge, clip_ref["clip_path"],
+                                  param_ref["path"])
+    if index is None:
+        await bridge.request("call", path=clip_ref["clip_path"],
+                             method="create_automation_envelope",
+                             args=[{"$obj": {"path": param_ref["path"]}}])
+        index = await _envelope_index(bridge, clip_ref["clip_path"],
+                                      param_ref["path"])
+    if index is None:
+        raise ToolError("internal",
+                        "could not locate the envelope for %r after creating it"
+                        % bounds.get("name"))
+    envelope_path = "%s.automation_envelopes.%d" % (clip_ref["clip_path"], index)
+    ops = [{"op": "call", "path": envelope_path, "method": "insert_step",
+            "args": [t, span, value]} for t, span, value in steps]
+    await _run_atomic(bridge, ops, "automate_parameter")
+    # Probe at step MIDPOINTS: Live's value_at_time on an exact step boundary
+    # reports the step ending there (and at beat 0, with nothing before it,
+    # the parameter's static value) — an artifact of sampling, not of the data.
+    probes = [steps[0], steps[len(steps) // 2], steps[-1]]
+    verified = []
+    for start, span, expected in probes:
+        at = start + span / 2.0
+        result = await bridge.request("call", path=envelope_path,
+                                      method="value_at_time", args=[at])
+        verified.append({"time": at, "value": result.get("value"),
+                         "wrote": expected})
+    return {"parameter": bounds.get("name"), "device": device_ref["path"],
+            "envelope": envelope_path, "steps": len(steps),
+            "range": {"min": lo, "max": hi}, "mode": mode,
+            "resolution": resolution, "read_back": verified}
+
+
+async def clear_automation(session, clip, device=None, parameter=None):
+    bridge = session.bridge
+    clip_ref = await resolve.resolve_clip(bridge, clip)
+    if device is None and parameter is None:
+        await _run_atomic(bridge, [{"op": "call", "path": clip_ref["clip_path"],
+                                    "method": "clear_all_envelopes"}],
+                          "clear_automation")
+        return {"cleared": "all"}
+    device_ref = await resolve.resolve_device(bridge, clip_ref["track_path"],
+                                              device)
+    param_ref = await resolve.resolve_parameter(bridge, device_ref["path"],
+                                                parameter)
+    await _run_atomic(bridge, [{"op": "call", "path": clip_ref["clip_path"],
+                                "method": "clear_envelope",
+                                "args": [{"$obj": {"path": param_ref["path"]}}]}],
+                      "clear_automation")
+    return {"cleared": param_ref["path"]}
 
 
 # --- watches -----------------------------------------------------------------------

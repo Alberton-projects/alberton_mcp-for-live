@@ -230,6 +230,19 @@ batch response. **[verified 2026-08-03 — this bit us]**
 Track/clip colors snap to Live's palette on write (`#FF8800` reads back `#F66C03`).
 Tools must treat the read-back as canonical. **[verified 2026-08-03]**
 
+Clip automation, all **[verified 2026-08-03]** while building `automate_parameter`:
+`Clip.create_automation_envelope` is **not** idempotent — it raises "There is already an
+envelope for the parameter", so find-then-create. The resulting `Envelope` has no
+canonical path (`_path_of` returns null for it); address it through the clip's
+`automation_envelopes` vector, and match it to its parameter by comparing `_live_ptr`,
+because `Envelope.parameter` comes back as a path-less stub and two devices on one track
+can expose identically named macros. `insert_step(time, duration, value)` is the only
+writable primitive (`EnvelopeEvent` objects cannot be constructed over the wire), so
+smooth shapes are rendered server-side as a tiling of small steps.
+`Envelope.value_at_time(t)` sampled exactly on a step boundary reports the step that
+*ends* there, and at beat 0 — with nothing before it — the parameter's static value;
+probe at step midpoints instead.
+
 `DeviceParameter.display_value` is numeric in the parameter's *display units*, both to
 read and to write — despite the docstring suggesting a string. Writing `-6.0` to a
 volume parameter sets the fader to −6 dB (normalized value read back 0.6999…). This is
