@@ -11,7 +11,7 @@ Script that let an LLM read and write a Live set through the Live Object Model (
 ## Quick start
 
 1. Install the Remote Script and select it in Live —
-   [remote_script/Alberton/README.md](remote_script/Alberton/README.md).
+   [remote_script/Alberton_MCP/README.md](remote_script/Alberton_MCP/README.md).
 2. Point your MCP client at the server —
    [server/README.md](server/README.md) has the Claude Desktop snippet.
 3. Sanity checks, with Live open: `python3 tools/wire_probe.py` (bridge) and

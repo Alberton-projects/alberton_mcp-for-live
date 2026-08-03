@@ -8,8 +8,8 @@ browser indexing, and the change feed.
 
 ## Run
 
-Requires the `Alberton` Remote Script selected in Live (see
-`remote_script/Alberton/README.md`).
+Requires the `Alberton MCP` Remote Script selected in Live (see
+`remote_script/Alberton_MCP/README.md`).
 
 ```
 uv run --project server alberton-mcp

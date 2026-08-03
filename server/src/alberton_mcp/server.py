@@ -46,8 +46,8 @@ async def _run(fn, **kwargs):
         return {"error": {
             "code": "bridge_unreachable",
             "message": str(exc),
-            "hint": "Is Ableton Live open with the 'Alberton' Control Surface "
-                    "selected under Preferences > Link, Tempo & MIDI? "
+            "hint": "Is Ableton Live open with the 'Alberton MCP' Control "
+                    "Surface selected under Preferences > Link, Tempo & MIDI? "
                     "The bridge listens on 127.0.0.1:17853."}}
 
 

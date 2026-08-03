@@ -18,7 +18,8 @@ Phase 0 (LOM introspection) was completed 2026-08-02: `tools/introspect/` dumps 
 from inside Live (12.4.3, embedded Python 3.11.6) to `docs/lom-raw.json`, and
 `tools/render_inventory.py` renders `docs/lom-inventory.md` from it. Phase 1 produced
 `docs/CONTRACT.md`, frozen as 1.0 on 2026-08-02 after user review. Phase 2 was
-completed 2026-08-03: the bridge (`remote_script/Alberton/`, v0.1.1) passes all 34
+completed 2026-08-03: the bridge (`remote_script/Alberton_MCP/`, v0.1.1 — the folder
+was renamed from `Alberton` the same day, shown as "Alberton MCP" in Live) passes all 34
 checks of the contract probe (`tools/wire_probe.py`) against a live instance. Phase 3
 was completed the same night: `server/` (package `alberton-mcp`, `mcp<2` pinned) serves
 the full Layer B catalogue — 39 tools — with 25 unit tests against an in-process fake

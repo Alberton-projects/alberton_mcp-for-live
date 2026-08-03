@@ -8,9 +8,12 @@ essentially never change.
 ## Install
 
 ```
-DEST="$HOME/Music/Ableton/User Library/Remote Scripts/Alberton"
+DEST="$HOME/Music/Ableton/User Library/Remote Scripts/Alberton_MCP"
 mkdir -p "$DEST" && cp __init__.py impl.py "$DEST/"
 ```
+
+The folder name must keep the underscore (Live imports it as a Python module and a
+space breaks the import); Live's Control Surface list renders it as "Alberton MCP".
 
 Use only this location (not the one under `~/Library/Preferences/Ableton/...`): two
 copies produce duplicate Control Surface entries and a port clash.
@@ -18,7 +21,7 @@ copies produce duplicate Control Surface entries and a port clash.
 ## Run
 
 1. Restart Live (it only scans Remote Scripts at startup).
-2. Preferences → Link, Tempo & MIDI → any free Control Surface slot → `Alberton`
+2. Preferences → Link, Tempo & MIDI → any free Control Surface slot → `Alberton MCP`
    (Input/Output: None).
 3. The status bar shows `Alberton: listening on 127.0.0.1:17853`.
 
