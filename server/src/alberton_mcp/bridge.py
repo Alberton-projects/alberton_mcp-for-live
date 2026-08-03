@@ -71,6 +71,10 @@ class Bridge:
         self._next_id = 1
         self._connect_lock = asyncio.Lock()
         self.remote_versions = None
+        # Bumped on every successful handshake. Anything the caller cached
+        # about the far side — subscription ids above all — belongs to one
+        # epoch and is void in the next.
+        self.epoch = 0
 
     @property
     def connected(self):
@@ -100,6 +104,7 @@ class Bridge:
                     "contract mismatch: bridge speaks %r, server needs %r"
                     % (versions.get("contract"), CONTRACT_VERSION))
             self.remote_versions = versions
+            self.epoch += 1
 
     async def request(self, op, timeout=REQUEST_TIMEOUT, **params):
         await self._ensure_connected()

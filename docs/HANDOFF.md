@@ -232,6 +232,16 @@ see that step in the undo history; one tick later it does. Batch rollback must
 therefore be deferred to the next tick — the bridge does this and only then sends the
 batch response. **[verified 2026-08-03 — this bit us]**
 
+Deselecting the Control Surface closes the listening socket cleanly — no orphan
+listener — and reselecting it brings the bridge back; a server holding one Session
+reconnects on its own, subscriptions included. The same holds across a full Live quit
+and restart. **Note the ordinary human sequence**: people open Live first and load their
+set afterwards, so a reconnecting server can land on a *different document* than the one
+it left. The server keeps no per-document state, so that works — but subscription ids
+are per-connection and restart at 1 in a new Live, which is why the server voids its
+watch registry and event feed whenever the connection that created them is gone.
+**[verified 2026-08-03]**
+
 An Arrangement clip's position is read-only: `Clip.start_time` and `end_time` have no
 setter, so a clip cannot be moved — delete and recreate it, or duplicate to the new
 time. `Track.create_midi_clip(time, length)` and `Track.create_audio_clip(path, time)`

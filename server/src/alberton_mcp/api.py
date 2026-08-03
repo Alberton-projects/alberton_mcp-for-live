@@ -53,6 +53,7 @@ class Session:
         self.bridge = bridge
         self.watches = {}        # sub id -> {"path", "props"}
         self.browser_cache = {}  # category -> {"items": [...], "by_uri": {...}}
+        self.seen_epoch = 0      # the bridge connection these watches belong to
 
 
 # --- small helpers -----------------------------------------------------------
@@ -463,7 +464,30 @@ async def get_notes(session, clip, from_time=None, time_span=None,
     return out
 
 
+def _reconcile_connection(session):
+    """Void anything tied to a connection that no longer exists.
+
+    Subscriptions live inside the Remote Script and die with their socket;
+    the script then hands out ids from 1 again after a Live restart, so a
+    stale registry would both advertise dead watches and misattribute old
+    events to new ones. Returns the watch ids that were dropped.
+    """
+    bridge = session.bridge
+    # Valid only while the very connection that created them is still up:
+    # a dropped socket kills them even if nothing has reconnected yet.
+    alive = bridge.connected and bridge.epoch == session.seen_epoch
+    dropped = []
+    if session.watches and not alive:
+        dropped = sorted(session.watches)
+        session.watches.clear()
+        bridge.feed = type(bridge.feed)()
+    if bridge.connected:
+        session.seen_epoch = bridge.epoch
+    return dropped
+
+
 async def get_changes(session, since=0):
+    dropped = _reconcile_connection(session)
     events = session.bridge.feed.since(since)
     shaped = []
     for event in events:
@@ -472,12 +496,21 @@ async def get_changes(session, since=0):
             if key in event:
                 entry[key] = event[key]
         watch = session.watches.get(event.get("sub"))
+        if event.get("event") == "gone":
+            # the watched object died under us (a track deleted, or another
+            # set loaded while the connection stayed up)
+            session.watches.pop(event.get("sub"), None)
         if watch:
             entry["watched"] = "%s (%s)" % (watch["path"],
                                             ",".join(watch["props"]))
         shaped.append(entry)
-    return {"events": shaped, "latest_seq": session.bridge.feed.latest_seq,
-            "active_watches": {str(k): v for k, v in session.watches.items()}}
+    out = {"events": shaped, "latest_seq": session.bridge.feed.latest_seq,
+           "active_watches": {str(k): v for k, v in session.watches.items()}}
+    if dropped:
+        out["watches_dropped"] = dropped
+        out["note"] = ("the connection to Live was replaced, so these watches "
+                       "died with it — call watch() again to resume")
+    return out
 
 
 # --- LOM escape hatches -----------------------------------------------------------
@@ -1372,12 +1405,17 @@ async def watch(session, path, props):
                             "%s.%s has no listener" % (class_name, prop),
                             hint="listenable props are in docs/lom-inventory.md")
     result = await session.bridge.request("subscribe", path=path, props=props)
+    _reconcile_connection(session)   # after connecting, so the epoch is current
     session.watches[result["sub"]] = {"path": path, "props": props}
     return {"watch_id": result["sub"], "current_values": result["values"],
             "note": "changes accumulate server-side; pull them with get_changes"}
 
 
 async def unwatch(session, watch_id):
+    dropped = _reconcile_connection(session)
+    if watch_id in dropped:
+        return {"unwatched": watch_id, "note": "it had already died with the "
+                                               "previous connection to Live"}
     await session.bridge.request("unsubscribe", sub=watch_id)
     session.watches.pop(watch_id, None)
     return {"unwatched": watch_id}
