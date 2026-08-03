@@ -163,7 +163,12 @@ Event semantics (backpressure by design):
   script drops oldest events and emits `overflow` with the dropped count; the server
   re-reads via `get` to resynchronize.
 - If the subscribed object dies (track deleted), the script emits `gone` and frees the
-  subscription.
+  subscription — **best-effort only**. Verified against Live 12.4.3: detection is
+  passive, because the script can only notice a dead object while servicing a listener
+  callback, and a deleted object fires no callbacks. In practice `gone` rarely arrives.
+  Layer B compensates: `get_changes` verifies liveness at pull time (§B.6), which suits
+  a pull-based protocol better than making the script poll every subscription on Live's
+  main thread.
 
 ### A.7 Errors
 
@@ -286,7 +291,7 @@ a script change and usually without a server release.
 |---|---|
 | `watch` | `path, props[]` → `{watch_id, current_values}` |
 | `unwatch` | `watch_id` |
-| `get_changes` | `since?` → events accumulated server-side (ring buffer 10 000, coalesced per A.6); the reply states `dropped > 0` if the buffer wrapped |
+| `get_changes` | `since?`, `verify?` → events accumulated server-side (ring buffer 10 000, coalesced per A.6); the reply states `dropped > 0` if the buffer wrapped. Also reports `watches_dropped` (the connection that owned them is gone — ids restart at 1 in a new Live, so the registry and feed are voided) and `watches_died` (the object itself no longer exists; checked here because Live announces neither). `verify=false` skips the liveness batch |
 
 MCP is pull-based, so changes reach the model when it asks; the value of v1 listeners
 is that the *server* stays continuously correct (caches invalidate themselves) and the

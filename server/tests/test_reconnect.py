@@ -66,15 +66,38 @@ async def test_watching_again_after_a_restart_starts_clean(fake, session):
 
 
 async def test_a_gone_event_evicts_its_watch(fake, session):
-    """The connection survives, but the watched object does not — a deleted
-    track, or another set loaded without quitting Live."""
+    """`gone` is best-effort from the bridge; when it does arrive, honour it."""
     watched = await api.watch(session, path="song.tracks.0", props=["name"])
-    fake.subscriptions[watched["watch_id"]]["seq"] += 1
     session.bridge.feed.ingest({"event": "gone", "sub": watched["watch_id"],
                                 "seq": 2, "reason": "path_invalid"})
-    changes = await api.get_changes(session)
+    changes = await api.get_changes(session, verify=False)
     assert [e["kind"] for e in changes["events"]] == ["gone"]
     assert changes["active_watches"] == {}      # evicted, not advertised
+
+
+async def test_a_deleted_watched_object_is_caught_at_pull_time(fake, session):
+    """Live sends nothing when it deletes a watched object — verified against
+    12.4.3 — so get_changes checks liveness itself."""
+    watched = await api.watch(session, path="song.tracks.2", props=["name"])
+    await api.delete_track(session, track=2)
+
+    changes = await api.get_changes(session)
+    assert changes["watches_died"] == [{"watch_id": watched["watch_id"],
+                                        "path": "song.tracks.2"}]
+    assert changes["active_watches"] == {}
+    assert "no longer exists" in changes["note"]
+
+    # and it is not reported twice
+    assert "watches_died" not in await api.get_changes(session)
+
+
+async def test_verification_can_be_skipped(fake, session):
+    await api.watch(session, path="song.tracks.2", props=["name"])
+    await api.delete_track(session, track=2)
+    fake.op_log.clear()
+    changes = await api.get_changes(session, verify=False)
+    assert "watches_died" not in changes
+    assert not fake.op_log          # no wire traffic at all
 
 
 async def test_reconnecting_to_a_different_set_is_not_stale(fake, session):

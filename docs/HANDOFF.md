@@ -232,6 +232,13 @@ see that step in the undo history; one tick later it does. Batch rollback must
 therefore be deferred to the next tick — the bridge does this and only then sends the
 batch response. **[verified 2026-08-03 — this bit us]**
 
+Loading another set does **not** keep the connection alive: Live tears the Remote Script
+down and re-creates it per document, so the socket drops and comes back — the same path
+as a restart. And deleting a watched object emits **no** event at all: the script's
+liveness check only runs while servicing a listener callback, and a dead object fires
+none. Both **[verified 2026-08-03]**; the server compensates by verifying watch liveness
+when `get_changes` is called.
+
 Deselecting the Control Surface closes the listening socket cleanly — no orphan
 listener — and reselecting it brings the bridge back; a server holding one Session
 reconnects on its own, subscriptions included. The same holds across a full Live quit

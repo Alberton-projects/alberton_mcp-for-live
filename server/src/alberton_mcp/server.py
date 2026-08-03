@@ -107,10 +107,15 @@ async def get_notes(clip: dict, from_time: Optional[float] = None,
 
 
 @mcp.tool()
-async def get_changes(since: int = 0) -> dict:
+async def get_changes(since: int = 0, verify: bool = True) -> dict:
     """Pull the change feed accumulated by watch(): events with increasing
-    seq. Pass the last seq you saw to get only what is new."""
-    return await _run(api.get_changes, since=since)
+    seq. Pass the last seq you saw to get only what is new.
+
+    Also checks that every watched object still exists, reporting any that
+    vanished under `watches_died` (Live gives no notification when it deletes
+    something you were watching). Pass verify=false to skip that check when
+    polling tightly."""
+    return await _run(api.get_changes, since=since, verify=verify)
 
 
 # --- LOM escape hatches ------------------------------------------------------------

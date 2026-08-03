@@ -486,8 +486,37 @@ def _reconcile_connection(session):
     return dropped
 
 
-async def get_changes(session, since=0):
+async def _verify_watches(session):
+    """Ask Live whether each watched object still exists.
+
+    The bridge can only notice a dead object when one of its listeners fires,
+    and a deleted object fires nothing — so its `gone` event is best-effort
+    and in practice rarely arrives. Verified 2026-08-03: deleting a watched
+    track produces no event at all. Since MCP is pull-based, the honest place
+    to check is the moment the caller asks.
+    """
+    if not session.watches:
+        return []
+    watched = sorted(session.watches.items())
+    ops = [{"op": "get", "path": entry["path"], "props": entry["props"][:1]}
+           for _sub, entry in watched]
+    result = await session.bridge.request("batch", ops=ops, stop_on_error=False)
+    died = []
+    for (sub, entry), sub_result in zip(watched, result["results"]):
+        gone = not sub_result.get("ok")
+        if not gone:
+            values = sub_result["result"]["values"]
+            gone = any(isinstance(v, dict) and "$error" in v
+                       for v in values.values())
+        if gone:
+            died.append({"watch_id": sub, "path": entry["path"]})
+            session.watches.pop(sub, None)
+    return died
+
+
+async def get_changes(session, since=0, verify=True):
     dropped = _reconcile_connection(session)
+    died = await _verify_watches(session) if verify else []
     events = session.bridge.feed.since(since)
     shaped = []
     for event in events:
@@ -497,8 +526,6 @@ async def get_changes(session, since=0):
                 entry[key] = event[key]
         watch = session.watches.get(event.get("sub"))
         if event.get("event") == "gone":
-            # the watched object died under us (a track deleted, or another
-            # set loaded while the connection stayed up)
             session.watches.pop(event.get("sub"), None)
         if watch:
             entry["watched"] = "%s (%s)" % (watch["path"],
@@ -510,6 +537,10 @@ async def get_changes(session, since=0):
         out["watches_dropped"] = dropped
         out["note"] = ("the connection to Live was replaced, so these watches "
                        "died with it — call watch() again to resume")
+    if died:
+        out["watches_died"] = died
+        out["note"] = ("what these watches pointed at no longer exists in the "
+                       "set — call watch() again on whatever replaced it")
     return out
 
 
