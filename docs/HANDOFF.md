@@ -235,9 +235,12 @@ volume parameter sets the fader to −6 dB (normalized value read back 0.6999…
 the clean route for dB-addressed mixing; the string rendering lives in
 `str_for_value`. **[verified 2026-08-03]**
 
-The user has an existing `ableton-mcp` install pinned to `mcp[cli]==1.28.1` in
-`claude_desktop_config.json`. Leave it working; this project should be developed alongside
-it on a different port until it can replace it.
+The user had an existing `ableton-mcp` install pinned to `mcp[cli]==1.28.1` in
+`claude_desktop_config.json`; the plan was to develop alongside it until this project
+could replace it. — Replaced 2026-08-03: the config now carries an `alberton` entry
+pointing at `server/` and the legacy entry is gone (timestamped backup kept next to the
+config). The legacy Remote Script folder and its Control Surface slot can be retired at
+leisure; the only feature gap until v1.1 is audio-clip import.
 
 The user's app repository `nuzic_app` (GitLab) has a personal access token embedded in
 plaintext in the git remote URL. Unrelated to this project, but it was flagged to them and
