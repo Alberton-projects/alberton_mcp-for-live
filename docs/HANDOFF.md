@@ -232,6 +232,22 @@ see that step in the undo history; one tick later it does. Batch rollback must
 therefore be deferred to the next tick — the bridge does this and only then sends the
 batch response. **[verified 2026-08-03 — this bit us]**
 
+`Clip.remove_notes_by_id` refuses the whole call unless **every** id is present, and
+says only "All given IDs must be present in clip" — so the server reads the clip back on
+that failure and names the missing ones. Note ids are per clip and are not reused after
+a delete. **[verified 2026-08-03]**
+
+Neither freezing nor grouping is exposed to the LOM: `is_frozen`, `can_be_frozen`,
+`is_grouped`, `is_foldable` and `group_track` are all read-only and there is no method to
+set them. Those two states can only be produced by hand in Live, so tests that need them
+must skip rather than build them. **[verified 2026-08-03]**
+
+Names survive the wire intact — quotes, backslashes, JSON-looking text, literal newlines
+and carriage returns, tabs, emoji, CJK, right-to-left script, 300 characters, the empty
+string. Written and read back byte-identical on Live 12.4.3. The newline case is the one
+that matters: it is the framing bug in the prior art, and JSON string escaping means
+NDJSON never sees it. **[verified 2026-08-03]**
+
 Regular tracks, return tracks and the master live in three separate places
 (`song.tracks`, `song.return_tracks`, `song.master_track`) and each counts from zero, so
 an index alone is ambiguous across them — and `Song.delete_track(0)` on a return would

@@ -246,8 +246,8 @@ async def session_overview(session, detail="standard"):
                                          for _e, path in device_lookups])
     for (entry, _path), values in zip(device_lookups, device_values):
         entry["devices"].append((values or {}).get("name"))
-    if not clip_lookups:
-        return out
+    # No early return when there are no slots to probe: `full` still owes the
+    # caller the returns and the master, and _gets copes with an empty list.
     slot_values = await _gets(bridge, [(path, ["has_clip"])
                                        for _e, _s, path in clip_lookups])
     with_clip = [(entry, s, path) for (entry, s, path), values
@@ -1109,7 +1109,22 @@ async def edit_notes(session, clip, add=None, update=None, remove_ids=None,
     params = {"clip": clip, "add": add, "update": update,
               "remove_ids": remove_ids, "remove_region": remove_region}
     ops = await _c_edit_notes(session, params)
-    results = await _run_atomic(session.bridge, ops, "edit_notes")
+    try:
+        results = await _run_atomic(session.bridge, ops, "edit_notes")
+    except ToolError as exc:
+        # Live refuses the whole removal unless every id is present, and says
+        # only that. Name the ones that are missing.
+        if remove_ids and "must be present" in (exc.message or ""):
+            present = {note["id"] for note in
+                       (await get_notes(session, clip=clip))["notes"]}
+            missing = [i for i in remove_ids if i not in present]
+            raise ToolError("not_found",
+                            "these note ids are not in the clip: %s" % missing,
+                            hint="Live refuses the whole removal unless every "
+                                 "id is present, so nothing was changed. Ids "
+                                 "come from get_notes or from a previous add; "
+                                 "they change when a note is deleted.")
+        raise
     return results[0].get("result") or {}
 
 

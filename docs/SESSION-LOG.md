@@ -27,11 +27,12 @@ in HANDOFF, the *spec* in CONTRACT.
 
 | Suite | Needs Live | Checks |
 |---|---|---|
-| `server/tests/` (pytest) | no | 94 |
+| `server/tests/` (pytest) | no | 101 |
 | `tools/wire_probe.py` | yes | 34 |
 | `tools/live_verify.py` | yes | 23 |
 | `tools/lifecycle_probe.py` | yes | 23 (+4 manual) |
 | `tools/functional_suite.py` | yes | 51, and **46/46 tools exercised** |
+| `tools/degenerate_probe.py` | yes | 43 (+2 need a human) |
 | `tools/scale_report.py` | yes | read-only measurement, no assertions |
 
 ---
@@ -40,15 +41,19 @@ in HANDOFF, the *spec* in CONTRACT.
 
 Ordered by what a stranger would hit first.
 
-1. **Level 2 testing** — the declared limits: a batch of exactly 256 and 257 ops, a clip
+1. **Stress under human hands** — audio rolling while parameters are moved by hand and
+   the server writes at the same time. Mostly level 2 (it is what finally exercises
+   subscription overflow), but it adds an axis nothing has tested: every suite so far
+   assumed the user was not touching Live.
+2. **Level 2 testing** — the declared limits: a batch of exactly 256 and 257 ops, a clip
    near the 20 000-note ceiling, subscription event overflow. UI blocking is already
    answered: measured on a 29-track set, Live stayed responsive throughout.
-2. **Degenerate sets** — an empty set, group tracks, frozen tracks, a MIDI track with no
-   instrument.
-3. **Level 3, portability** — only Live 12.4.3 Suite on macOS has ever been tested.
+3. **Two degenerate cases need a human**: a group track (Cmd-G) and a frozen track.
+   Live exposes neither to the LOM, so `degenerate_probe.py` skips them.
+4. **Level 3, portability** — only Live 12.4.3 Suite on macOS has ever been tested.
    Either test Live 11 / other 12.x / Windows, or state the supported scope in the
    README and promise nothing more.
-4. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
+5. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
    this last, once the README has stopped moving.
 
 ## Open — undecided
@@ -60,6 +65,15 @@ Ordered by what a stranger would hit first.
 ---
 
 ## Log
+
+### 2026-08-03 — degenerate material
+
+- `5e1abef` **Degenerate probe**: empty tracks and clips, awkward names, values at their
+  limits, nonsense locators. 43 checks. Two bugs: `edit_notes` passed Live's opaque
+  "All given IDs must be present" straight through, and `session_overview(detail='full')`
+  returned early when there were no Session slots to probe, so it never reported the
+  returns or the master. Names round-trip byte-identical including literal newlines —
+  the prior art's framing bug, proven absent.
 
 ### 2026-08-03 — reaching the whole set
 
