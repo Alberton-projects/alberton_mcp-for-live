@@ -268,10 +268,19 @@ async def session_overview(session, detail="standard"):
         }
     if detail == "full":
         return_values = await _gets(bridge,
-                                    [("song.return_tracks.%d" % i, ["name"])
+                                    [("song.return_tracks.%d" % i,
+                                      ["name", "mute", "solo"])
                                      for i in range(return_count)])
-        out["returns"] = [{"index": i, "name": (v or {}).get("name")}
+        out["returns"] = [{"index": i, "name": (v or {}).get("name"),
+                           "mute": (v or {}).get("mute"),
+                           "locator": "return:%d" % i}
                           for i, v in enumerate(return_values)]
+        master = await _gets(bridge, [("song.master_track", ["name"]),
+                                      ("song.master_track.mixer_device.volume",
+                                       ["display_value"])])
+        out["master"] = {"name": (master[0] or {}).get("name"),
+                         "volume": (master[1] or {}).get("display_value"),
+                         "locator": "master"}
         mixer_values = await _gets(
             bridge,
             [("song.tracks.%d.mixer_device.volume" % i, ["display_value"])
@@ -291,7 +300,7 @@ async def get_track(session, track, detail="standard"):
     ref = await resolve.resolve_track(bridge, track)
     described = await bridge.request("describe", path=ref["path"])
     p = described["props"]
-    out = {"index": ref["index"], "path": ref["path"],
+    out = {"index": ref["index"], "kind": ref["kind"], "path": ref["path"],
            "name": _scalar(p.get("name")),
            "color": colors.to_hex(_scalar(p.get("color"))),
            "type": ("group" if _scalar(p.get("is_foldable")) else
@@ -654,7 +663,7 @@ async def lom_call(session, path, method, args=None, kwargs=None):
 
 SONG_SETTABLE = {"tempo", "signature_numerator", "signature_denominator",
                  "scale_name", "root_note", "scale_mode", "groove_amount",
-                 "metronome"}
+                 "metronome", "tempo_follower_enabled"}
 
 
 async def _c_set_song(session, params):
@@ -1006,14 +1015,27 @@ async def set_track(session, track, **params):
 
 async def delete_track(session, track):
     ref = await resolve.resolve_track(session.bridge, track)
+    if ref["kind"] == "master":
+        raise ToolError("invalid_argument", "Live cannot delete the master track")
+    # Regular tracks and returns are separate vectors: deleting a return by
+    # its index through Song.delete_track would remove the regular track that
+    # happens to share that index.
+    method = ("delete_return_track" if ref["kind"] == "return"
+              else "delete_track")
     await _run_atomic(session.bridge,
-                      [{"op": "call", "path": "song", "method": "delete_track",
+                      [{"op": "call", "path": "song", "method": method,
                         "args": [ref["index"]]}], "delete_track")
-    return {"deleted_index": ref["index"], "was_named": ref.get("name")}
+    return {"deleted_index": ref["index"], "kind": ref["kind"],
+            "was_named": ref.get("name")}
 
 
 async def duplicate_track(session, track):
     ref = await resolve.resolve_track(session.bridge, track)
+    if ref["kind"] != "track":
+        raise ToolError("invalid_argument",
+                        "Live can only duplicate regular tracks, not the %s"
+                        % ("master track" if ref["kind"] == "master"
+                           else "return track"))
     await _run_atomic(session.bridge,
                       [{"op": "call", "path": "song", "method": "duplicate_track",
                         "args": [ref["index"]]}], "duplicate_track")

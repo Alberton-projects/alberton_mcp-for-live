@@ -81,14 +81,14 @@ class FakeLive:
     def __init__(self):
         self.song = {
             "__class__": "Song", "tempo": 120.0, "is_playing": False,
-            "current_song_time": 0.0, "signature_numerator": 4,
+            "tempo_follower_enabled": False, "current_song_time": 0.0, "signature_numerator": 4,
             "signature_denominator": 4, "scale_name": "Major", "root_note": 0,
             "scale_mode": False, "groove_amount": 0.0, "metronome": False,
             "tracks": [_track("Lead"), _track("Bass"),
                        _track("Loops", midi=False)],
             "return_tracks": [_track("Reverb Return", midi=False),
                               _track("Delay Return", midi=False)],
-            "master_track": _track("Master", midi=False),
+            "master_track": _track("Main", midi=False, slots=0),
             "scenes": [{"__class__": "Scene", "name": "Scene %d" % i,
                         "color": 0x333333} for i in range(4)],
             "view": {"__class__": "View", "selected_track": None},
@@ -322,6 +322,9 @@ class FakeBridgeServer:
             if method == "delete_track":
                 song["tracks"].pop(args[0])
                 return {"value": None}
+            if method == "delete_return_track":
+                song["return_tracks"].pop(args[0])
+                return {"value": None}
             if method == "duplicate_track":
                 clone = copy.deepcopy(song["tracks"][args[0]])
                 clone["name"] += " Copy"
@@ -467,8 +470,16 @@ class FakeBridgeServer:
                 raise WireFail("live_error", "no selected track")
             selected["devices"].append({
                 "__class__": "PluginDevice", "name": item["name"],
-                "class_name": "PluginDevice",
-                "parameters": [_param("Device On", 1.0, display=1.0)]})
+                "class_name": "PluginDevice", "can_have_chains": True,
+                "parameters": [_param("Device On", 1.0, display=1.0),
+                               _param("Filter Cutoff", 47.0, 0.0, 127.0, 835.0)],
+                "chains": [{
+                    "__class__": "Chain", "name": "Chain 1",
+                    "devices": [{
+                        "__class__": "PluginDevice", "name": "Inner",
+                        "class_name": "PluginDevice",
+                        "parameters": [_param("Inner Gain", 0.5, 0.0, 1.0, 0.0)],
+                        "chains": []}]}]})
             return {"value": None}
         if cls == "View" and method == "show_view":
             self.live.view_log.append(args[0])

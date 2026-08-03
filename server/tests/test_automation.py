@@ -14,7 +14,7 @@ async def _clip_with_device(session, fake):
     # give the fake device a sweepable macro alongside "Device On"
     device = fake.live.song["tracks"][0]["devices"][0]
     device["parameters"].append(
-        {"__class__": "DeviceParameter", "name": "Filter Cutoff", "value": 47.0,
+        {"__class__": "DeviceParameter", "name": "Sweep", "value": 47.0,
          "min": 0.0, "max": 127.0, "display_value": 835.0, "_live_ptr": 7777})
     return {"track": 0, "slot": 0}
 
@@ -22,17 +22,17 @@ async def _clip_with_device(session, fake):
 async def test_ramp_renders_and_reads_back(fake, session):
     clip = await _clip_with_device(session, fake)
     result = await api.automate_parameter(
-        session, clip=clip, device="FakeSynth", parameter="Filter Cutoff",
+        session, clip=clip, device="FakeSynth", parameter="Sweep",
         points=[{"time": 0, "value": 30}, {"time": 8, "value": 110}],
         resolution=1.0)
-    assert result["parameter"] == "Filter Cutoff"
+    assert result["parameter"] == "Sweep"
     assert result["steps"] == 9  # 8 interpolated + the final breakpoint
     # probes land at step midpoints, so read-back matches what was written
     assert all(p["value"] == p["wrote"] for p in result["read_back"])
     assert result["read_back"][0]["value"] == 30.0
     envelope = fake.live.song["tracks"][0]["clip_slots"][0]["clip"][
         "automation_envelopes"][0]
-    assert envelope["parameter"]["name"] == "Filter Cutoff"
+    assert envelope["parameter"]["name"] == "Sweep"
     values = [round(v, 2) for _t, _s, v in envelope["steps"]]
     assert values[0] == 30.0 and values[-1] == 110.0
     assert values == sorted(values)  # monotonic ramp
@@ -41,7 +41,7 @@ async def test_ramp_renders_and_reads_back(fake, session):
 async def test_hold_mode_is_stepped(fake, session):
     clip = await _clip_with_device(session, fake)
     await api.automate_parameter(
-        session, clip=clip, device="FakeSynth", parameter="Filter Cutoff",
+        session, clip=clip, device="FakeSynth", parameter="Sweep",
         points=[{"time": 0, "value": 20}, {"time": 4, "value": 90}],
         mode="hold")
     envelope = fake.live.song["tracks"][0]["clip_slots"][0]["clip"][
@@ -53,7 +53,7 @@ async def test_hold_mode_is_stepped(fake, session):
 async def test_values_are_clamped_to_the_parameter_range(fake, session):
     clip = await _clip_with_device(session, fake)
     await api.automate_parameter(
-        session, clip=clip, device="FakeSynth", parameter="Filter Cutoff",
+        session, clip=clip, device="FakeSynth", parameter="Sweep",
         points=[{"time": 0, "value": -50}, {"time": 4, "value": 900}],
         resolution=2.0)
     envelope = fake.live.song["tracks"][0]["clip_slots"][0]["clip"][
@@ -66,7 +66,7 @@ async def test_too_many_steps_is_refused_with_a_usable_hint(fake, session):
     clip = await _clip_with_device(session, fake)
     with pytest.raises(ToolError) as excinfo:
         await api.automate_parameter(
-            session, clip=clip, device="FakeSynth", parameter="Filter Cutoff",
+            session, clip=clip, device="FakeSynth", parameter="Sweep",
             points=[{"time": 0, "value": 0}, {"time": 400, "value": 127}],
             resolution=0.25)
     assert excinfo.value.code == "too_large"
@@ -81,14 +81,15 @@ async def test_envelope_matched_by_identity_not_name(fake, session):
     device = fake.live.song["tracks"][0]["devices"][0]
     # a second parameter with the SAME name, as two racks on a track can have
     device["parameters"].append(
-        {"__class__": "DeviceParameter", "name": "Filter Cutoff", "value": 0.0,
+        {"__class__": "DeviceParameter", "name": "Sweep", "value": 0.0,
          "min": 0.0, "max": 127.0, "display_value": 0.0, "_live_ptr": 8888})
+    # index 3 and index 2 share the name "Sweep": only _live_ptr tells them apart
     await api.automate_parameter(
-        session, clip=clip, device="FakeSynth", parameter=2,
+        session, clip=clip, device="FakeSynth", parameter=3,
         points=[{"time": 0, "value": 10}, {"time": 4, "value": 20}],
         resolution=2.0)
     await api.automate_parameter(
-        session, clip=clip, device="FakeSynth", parameter=1,
+        session, clip=clip, device="FakeSynth", parameter=2,
         points=[{"time": 0, "value": 100}, {"time": 4, "value": 120}],
         resolution=2.0)
     envelopes = fake.live.song["tracks"][0]["clip_slots"][0]["clip"][
@@ -105,7 +106,7 @@ async def test_rewriting_an_existing_envelope(fake, session):
     clip = await _clip_with_device(session, fake)
     for value in (40, 90):
         await api.automate_parameter(
-            session, clip=clip, device="FakeSynth", parameter="Filter Cutoff",
+            session, clip=clip, device="FakeSynth", parameter="Sweep",
             points=[{"time": 0, "value": value}, {"time": 4, "value": value}],
             resolution=2.0)
     envelopes = fake.live.song["tracks"][0]["clip_slots"][0]["clip"][
@@ -117,7 +118,7 @@ async def test_rewriting_an_existing_envelope(fake, session):
 async def test_clear_automation(fake, session):
     clip = await _clip_with_device(session, fake)
     await api.automate_parameter(
-        session, clip=clip, device="FakeSynth", parameter="Filter Cutoff",
+        session, clip=clip, device="FakeSynth", parameter="Sweep",
         points=[{"time": 0, "value": 30}, {"time": 4, "value": 90}],
         resolution=2.0)
     await api.clear_automation(session, clip=clip)

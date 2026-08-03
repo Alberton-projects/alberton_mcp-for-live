@@ -27,7 +27,7 @@ in HANDOFF, the *spec* in CONTRACT.
 
 | Suite | Needs Live | Checks |
 |---|---|---|
-| `server/tests/` (pytest) | no | 76 |
+| `server/tests/` (pytest) | no | 94 |
 | `tools/wire_probe.py` | yes | 34 |
 | `tools/live_verify.py` | yes | 23 |
 | `tools/lifecycle_probe.py` | yes | 23 (+4 manual) |
@@ -40,28 +40,15 @@ in HANDOFF, the *spec* in CONTRACT.
 
 Ordered by what a stranger would hit first.
 
-1. **Return and master tracks are unreachable from the high-level tools.**
-   `resolve_track` searches `song.tracks` only, so `get_track("A-Reverb")` and
-   `get_track("Master")` both fail. Both are fully reachable through `lom_get` /
-   `lom_set` / `lom_call` on `song.return_tracks.N` and `song.master_track` — verified,
-   including writing the master's pan. The fix is to make the track locator polymorphic
-   the way the clip locator already is. Note Live 12.4.3 names the master track
-   **"Main"**.
-2. **Devices nested inside racks are unreachable from the high-level tools.**
-   `resolve_device` looks at `track.devices` only; a device inside a rack chain lives at
-   `…devices.N.chains.M.devices.K`. Reachable through the LOM hatches today.
-3. **`tempo_follower_enabled` is not in `set_song`.** It is read-write and watchable —
-   verified by writing and restoring it. Live's own caveat: the Tempo Follower toggle
-   must be visible in Preferences for the property to take effect.
-4. **Level 2 testing** — the declared limits: a batch of exactly 256 and 257 ops, a clip
+1. **Level 2 testing** — the declared limits: a batch of exactly 256 and 257 ops, a clip
    near the 20 000-note ceiling, subscription event overflow. UI blocking is already
    answered: measured on a 29-track set, Live stayed responsive throughout.
-5. **Degenerate sets** — an empty set, group tracks, frozen tracks, a MIDI track with no
+2. **Degenerate sets** — an empty set, group tracks, frozen tracks, a MIDI track with no
    instrument.
-6. **Level 3, portability** — only Live 12.4.3 Suite on macOS has ever been tested.
+3. **Level 3, portability** — only Live 12.4.3 Suite on macOS has ever been tested.
    Either test Live 11 / other 12.x / Windows, or state the supported scope in the
    README and promise nothing more.
-7. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
+4. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
    this last, once the README has stopped moving.
 
 ## Open — undecided
@@ -73,6 +60,16 @@ Ordered by what a stranger would hit first.
 ---
 
 ## Log
+
+### 2026-08-03 — reaching the whole set
+
+- `b83ce79` **Locators cover everything**: the track locator now reaches return tracks and
+  the master (`"master"`, `"return:0"`, `"return:A-Reverb"`, or their own names — the
+  master is called "Main"), with guards so a return is never deleted through the regular
+  track vector. The device locator descends into racks with a slash path
+  (`"Bass Raw/0/Operator"`), so macros and nested devices are addressable by name.
+  `tempo_follower_enabled` joined `set_song`. 18 new unit tests, 13 checks against real
+  Live including the Bass Raw rack.
 
 ### 2026-08-03 — functional coverage, scale, lifecycle
 

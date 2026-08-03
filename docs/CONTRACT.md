@@ -211,9 +211,16 @@ Conventions for every tool:
 - **Time**: floats in beats. `*_beats` suffixes are omitted; units are beats unless a
   parameter is explicitly `_seconds`. Clip-note times are clip-local; transport and
   Arrangement times are song-absolute.
-- **Locators**: `track` accepts an integer index or an exact name (server resolves
-  names; ambiguous or missing names are structured errors listing candidates).
-  `clip` is `{track, slot}` (Session) — slot is the scene index.
+- **Locators**: `track` accepts an integer index (regular tracks only — all three
+  families count from zero, so a bare index could not say which), an exact name, or
+  the explicit forms `"master"` and `"return:0"` / `"return:A-Reverb"`. Returns and the
+  master also answer to their own names; Live 12.4.3 calls the master track **"Main"**.
+  A regular track wins a name collision. Ambiguous or missing names are structured
+  errors listing candidates from all three families.
+  `device` accepts an index, an exact name, or a slash path descending into racks,
+  alternating device and chain: `"Bass Raw/0/Operator"`. Macro controls are ordinary
+  parameters addressed by name.
+  `clip` is `{track, slot}` (Session), `{track, time}` or `{track, arrangement}`.
 - **Colors**: `#RRGGBB` strings.
 - **Every mutating tool** returns read-back state of what it changed, plus the
   canonical locator of what it created. Every mutating tool is one undo step; `batch`

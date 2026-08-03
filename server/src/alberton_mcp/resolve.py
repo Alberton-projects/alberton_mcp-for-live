@@ -75,8 +75,66 @@ async def _resolve_indexed(bridge, spec, base_path, vec_prop, kind, parent="song
                     "%s locator must be an int index or exact name" % kind)
 
 
+MASTER_NAMES = ("master", "main")
+
+
+async def _one(bridge, path, prop):
+    result = await bridge.request("get", path=path, props=[prop])
+    value = result["values"].get(prop)
+    return None if isinstance(value, dict) else value
+
+
+def _master_ref():
+    return {"kind": "master", "index": None, "path": "song.master_track"}
+
+
 async def resolve_track(bridge, track):
-    return await _resolve_indexed(bridge, track, None, "tracks", "track")
+    """Any track: a regular one, a return, or the master.
+
+    An integer always means a regular track — all three families count from
+    zero, so a bare index could not say which. Returns and the master answer
+    to their own name, or to the explicit forms "return:0", "return:A-Reverb"
+    and "master". Live 12.4.3 calls the master track "Main".
+    """
+    if isinstance(track, str):
+        text = track.strip()
+        if text.lower() in MASTER_NAMES:
+            return _master_ref()
+        if text.lower().startswith("return:"):
+            ref = await _resolve_indexed(bridge, as_index(text.split(":", 1)[1].strip()),
+                                         None, "return_tracks", "return track")
+            ref["kind"] = "return"
+            return ref
+    try:
+        ref = await _resolve_indexed(bridge, track, None, "tracks", "track")
+        ref["kind"] = "track"
+        return ref
+    except ToolError as exc:
+        if exc.code != "not_found" or not isinstance(track, str):
+            raise
+        regular = exc.hint
+    # Not a regular track: it may be a return or the master under its own name.
+    count = await vec_len(bridge, "song", "return_tracks")
+    names = await names_of(bridge, "song.return_tracks", count)
+    matches = [i for i, name in enumerate(names) if name == track]
+    if len(matches) == 1:
+        return {"kind": "return", "index": matches[0], "name": track,
+                "path": "song.return_tracks.%d" % matches[0]}
+    if len(matches) > 1:
+        raise ToolError("ambiguous_name",
+                        "%d return tracks are named %r" % (len(matches), track),
+                        hint="use return:%d or another index" % matches[0])
+    master_name = await _one(bridge, "song.master_track", "name")
+    if master_name == track:
+        ref = _master_ref()
+        ref["name"] = master_name
+        return ref
+    raise ToolError("not_found", "no track named %r" % track,
+                    hint="%s; returns: %s; master: %r (or say 'master')"
+                         % (regular,
+                            ", ".join("%d:%r" % (i, n)
+                                      for i, n in enumerate(names)) or "none",
+                            master_name))
 
 
 async def resolve_return_track(bridge, spec):
@@ -88,8 +146,23 @@ async def resolve_scene(bridge, scene):
 
 
 async def resolve_device(bridge, track_path, device):
-    return await _resolve_indexed(bridge, device, track_path + ".devices",
-                                  None, "device")
+    """A device on a track, or one nested inside a rack.
+
+    `0` or `"Bass Raw"` addresses a top-level device. A slash-separated path
+    descends into racks, alternating device and chain:
+    `"Bass Raw/0/Operator"` is the Operator inside chain 0 of the Bass Raw
+    rack. Every segment may be an index or an exact name.
+    """
+    segments = ([s.strip() for s in device.split("/")]
+                if isinstance(device, str) and "/" in device else [device])
+    ref = None
+    base = track_path + ".devices"
+    for depth, segment in enumerate(segments):
+        kind = "device" if depth % 2 == 0 else "chain"
+        ref = await _resolve_indexed(bridge, segment, base, None, kind)
+        base = ref["path"] + (".chains" if depth % 2 == 0 else ".devices")
+    ref["depth"] = len(segments)
+    return ref
 
 
 async def resolve_parameter(bridge, device_path, parameter):
@@ -102,9 +175,16 @@ async def resolve_slot(bridge, track, slot):
     track_ref = await resolve_track(bridge, track)
     slot_count = await vec_len(bridge, track_ref["path"], "clip_slots")
     slot = as_index(slot)
+    if slot_count == 0:
+        raise ToolError("invalid_argument",
+                        "the %s track holds no clips"
+                        % (track_ref["kind"] if track_ref["kind"] != "track"
+                           else "group"),
+                        hint="return and master tracks have no Session slots; "
+                             "route audio to them instead")
     if not isinstance(slot, int) or isinstance(slot, bool) or not 0 <= slot < slot_count:
         raise ToolError("not_found", "slot %r out of range" % (slot,),
-                        hint="track %d has %d slots (scenes 0–%d)"
+                        hint="track %s has %d slots (scenes 0–%d)"
                              % (track_ref["index"], slot_count, slot_count - 1))
     slot_path = "%s.clip_slots.%d" % (track_ref["path"], slot)
     result = await bridge.request("get", path=slot_path, props=["has_clip"])

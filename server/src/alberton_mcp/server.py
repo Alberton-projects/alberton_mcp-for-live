@@ -65,8 +65,12 @@ async def session_overview(detail: str = "standard") -> dict:
 @mcp.tool()
 async def get_track(track: Union[int, str], detail: str = "standard") -> dict:
     """One track in depth: mixer (volume/pan/sends with display strings),
-    devices, clips. track = index or exact name. detail 'full' adds each
-    device's parameter names."""
+    devices, clips. detail 'full' adds each device's parameter names.
+
+    A track locator is an index (regular tracks only), an exact name, or one
+    of the explicit forms "master" and "return:0" / "return:A-Reverb".
+    Returns and the master also answer to their own names — Live 12.4.3 calls
+    the master track "Main" — and neither holds Session clips."""
     return await _run(api.get_track, track=track, detail=detail)
 
 
@@ -164,14 +168,19 @@ async def set_song(tempo: Optional[float] = None,
                    root_note: Optional[int] = None,
                    scale_mode: Optional[bool] = None,
                    groove_amount: Optional[float] = None,
-                   metronome: Optional[bool] = None) -> dict:
+                   metronome: Optional[bool] = None,
+                   tempo_follower_enabled: Optional[bool] = None) -> dict:
     """Song-level settings. tempo in BPM (Live stores it as float32 — expect
-    e.g. 123.45 to read back as 123.44999...), root_note 0-11 (0=C)."""
+    e.g. 123.45 to read back as 123.44999...), root_note 0-11 (0=C),
+    scale_mode turns Live's scale awareness on. tempo_follower_enabled hands
+    the tempo to the Tempo Follower — Live ignores it unless the Tempo
+    Follower toggle has been made visible in Preferences."""
     params = {k: v for k, v in dict(
         tempo=tempo, signature_numerator=signature_numerator,
         signature_denominator=signature_denominator, scale_name=scale_name,
         root_note=root_note, scale_mode=scale_mode,
-        groove_amount=groove_amount, metronome=metronome).items()
+        groove_amount=groove_amount, metronome=metronome,
+        tempo_follower_enabled=tempo_follower_enabled).items()
         if v is not None}
     return await _run(api.set_song, **params)
 
@@ -402,10 +411,17 @@ async def set_device_parameter(track: Union[int, str],
                                device: Union[int, str],
                                parameter: Union[int, str],
                                value: Union[float, dict]) -> dict:
-    """Set one device parameter. value: number in the parameter's [min, max]
-    (see get_track detail='full'), or {"display": -6.0} to write in the
-    parameter's DISPLAY units (dB, %, st — numeric, as shown in Live).
-    Returns value + display read-back."""
+    """Set one device parameter — including a rack's macro controls, which are
+    just parameters with names like "Filter Cutoff".
+
+    device is an index, an exact name, or a slash path descending into racks,
+    alternating device and chain: "Bass Raw/0/Operator" is the Operator inside
+    chain 0 of that rack. Works on return and master tracks too.
+
+    value: a number in the parameter's [min, max] (see get_track
+    detail='full'), or {"display": -6.0} to write in the parameter's DISPLAY
+    units (dB, %, st — numeric, as shown in Live). Returns value + display
+    read-back; some parameters accept only certain values and snap."""
     return await _run(api.set_device_parameter, track=track, device=device,
                       parameter=parameter, value=value)
 

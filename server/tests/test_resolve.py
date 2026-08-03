@@ -6,7 +6,8 @@ from alberton_mcp.errors import ToolError
 
 async def test_track_by_index(session):
     ref = await resolve.resolve_track(session.bridge, 1)
-    assert ref == {"index": 1, "path": "song.tracks.1"}
+    assert ref["index"] == 1 and ref["path"] == "song.tracks.1"
+    assert ref["kind"] == "track"
 
 
 async def test_track_by_name(session):

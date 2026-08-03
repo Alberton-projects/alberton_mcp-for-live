@@ -232,6 +232,14 @@ see that step in the undo history; one tick later it does. Batch rollback must
 therefore be deferred to the next tick — the bridge does this and only then sends the
 batch response. **[verified 2026-08-03 — this bit us]**
 
+Regular tracks, return tracks and the master live in three separate places
+(`song.tracks`, `song.return_tracks`, `song.master_track`) and each counts from zero, so
+an index alone is ambiguous across them — and `Song.delete_track(0)` on a return would
+delete the regular track sharing that index. Returns have their own
+`Song.delete_return_track`; the master can be neither deleted nor duplicated. Neither
+returns nor the master hold Session clips (zero clip slots) and the master has no sends.
+Live 12.4.3 names the master track **"Main"**. **[verified 2026-08-03]**
+
 `DeviceParameter.is_quantized` means "has named discrete values" (Operator's Algorithm),
 **not** "accepts only whole numbers". Others round silently anyway — Transpose takes
 semitones over −48..48 with `is_quantized` false. So whether a written shape survived is
