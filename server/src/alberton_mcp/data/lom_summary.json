@@ -1,0 +1,2745 @@
+{
+ "classes": {
+  "Application.Application": {
+   "listeners": [
+    "average_process_usage",
+    "control_surfaces",
+    "open_dialog_count",
+    "peak_process_usage",
+    "unavailable_features"
+   ],
+   "methods": [
+    "get_bugfix_version",
+    "get_build_id",
+    "get_document",
+    "get_major_version",
+    "get_minor_version",
+    "get_variant",
+    "get_version_string",
+    "has_option",
+    "press_current_dialog_button",
+    "show_message",
+    "show_on_the_fly_message"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "average_process_usage": false,
+    "browser": false,
+    "canonical_parent": false,
+    "control_surfaces": false,
+    "current_dialog_button_count": false,
+    "current_dialog_message": false,
+    "number_of_push_apps_running": false,
+    "open_dialog_count": false,
+    "peak_process_usage": false,
+    "unavailable_features": false,
+    "view": false
+   }
+  },
+  "Application.Application.View": {
+   "listeners": [
+    "browse_mode",
+    "focused_document_view",
+    "is_view_visible",
+    "view_focus_changed"
+   ],
+   "methods": [
+    "available_main_views",
+    "focus_view",
+    "hide_view",
+    "is_view_visible",
+    "scroll_view",
+    "show_view",
+    "toggle_browse",
+    "zoom_view"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "browse_mode": false,
+    "canonical_parent": false,
+    "focused_document_view": false
+   }
+  },
+  "Application.ControlDescription": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "id": false,
+    "name": false
+   }
+  },
+  "Application.ControlDescriptionVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "Application.ControlSurfaceProxy": {
+   "listeners": [
+    "control_values_arrived",
+    "midi_received",
+    "pad_layout"
+   ],
+   "methods": [
+    "enable_receive_midi",
+    "fetch_received_midi_messages",
+    "fetch_received_values",
+    "grab_control",
+    "release_control",
+    "send_midi",
+    "send_value",
+    "subscribe_to_control",
+    "unsubscribe_from_control"
+   ],
+   "props": {
+    "control_descriptions": false,
+    "pad_layout": false,
+    "type_name": false
+   }
+  },
+  "Application.UnavailableFeatureVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "Application.Variants": {
+   "listeners": [],
+   "methods": [],
+   "props": {}
+  },
+  "Base.FloatVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "Base.IntU64Vector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "Base.IntVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "Base.LimitationError": {
+   "listeners": [],
+   "methods": [
+    "with_traceback"
+   ],
+   "props": {}
+  },
+  "Base.ObjectVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "Base.StringVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "Base.Text": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "text": false
+   }
+  },
+  "Base.Timer": {
+   "listeners": [],
+   "methods": [
+    "restart",
+    "start",
+    "stop"
+   ],
+   "props": {
+    "running": false
+   }
+  },
+  "Base.Vector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "Browser.Browser": {
+   "listeners": [
+    "filter_type",
+    "full_refresh",
+    "hotswap_target"
+   ],
+   "methods": [
+    "load_item",
+    "preview_item",
+    "relation_to_hotswap_target",
+    "stop_preview"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "audio_effects": false,
+    "clips": false,
+    "colors": false,
+    "current_project": false,
+    "drums": false,
+    "filter_type": true,
+    "hotswap_target": true,
+    "instruments": false,
+    "legacy_libraries": false,
+    "max_for_live": false,
+    "midi_effects": false,
+    "packs": false,
+    "plugins": false,
+    "samples": false,
+    "sounds": false,
+    "user_folders": false,
+    "user_library": false
+   }
+  },
+  "Browser.BrowserItem": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "children": false,
+    "is_device": false,
+    "is_folder": false,
+    "is_loadable": false,
+    "is_selected": false,
+    "iter_children": false,
+    "name": false,
+    "source": false,
+    "uri": false
+   }
+  },
+  "Browser.BrowserItemIterator": {
+   "listeners": [],
+   "methods": [],
+   "props": {}
+  },
+  "Browser.BrowserItemVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "CcControlDevice.CcControlDevice": {
+   "listeners": [
+    "custom_bool_target",
+    "custom_float_target_0",
+    "custom_float_target_1",
+    "custom_float_target_10",
+    "custom_float_target_11",
+    "custom_float_target_2",
+    "custom_float_target_3",
+    "custom_float_target_4",
+    "custom_float_target_5",
+    "custom_float_target_6",
+    "custom_float_target_7",
+    "custom_float_target_8",
+    "custom_float_target_9",
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "name",
+    "parameters"
+   ],
+   "methods": [
+    "resend",
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "custom_bool_target": true,
+    "custom_bool_target_list": false,
+    "custom_float_target_0": true,
+    "custom_float_target_0_list": false,
+    "custom_float_target_1": true,
+    "custom_float_target_10": true,
+    "custom_float_target_10_list": false,
+    "custom_float_target_11": true,
+    "custom_float_target_11_list": false,
+    "custom_float_target_1_list": false,
+    "custom_float_target_2": true,
+    "custom_float_target_2_list": false,
+    "custom_float_target_3": true,
+    "custom_float_target_3_list": false,
+    "custom_float_target_4": true,
+    "custom_float_target_4_list": false,
+    "custom_float_target_5": true,
+    "custom_float_target_5_list": false,
+    "custom_float_target_6": true,
+    "custom_float_target_6_list": false,
+    "custom_float_target_7": true,
+    "custom_float_target_7_list": false,
+    "custom_float_target_8": true,
+    "custom_float_target_8_list": false,
+    "custom_float_target_9": true,
+    "custom_float_target_9_list": false,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "name": true,
+    "parameters": false,
+    "type": false,
+    "view": false
+   }
+  },
+  "CcControlDevice.CcControlDevice.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  },
+  "Chain.Chain": {
+   "listeners": [
+    "color",
+    "color_index",
+    "devices",
+    "is_auto_colored",
+    "mute",
+    "muted_via_solo",
+    "name",
+    "solo"
+   ],
+   "methods": [
+    "delete_device",
+    "duplicate_device",
+    "insert_device"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "color": true,
+    "color_index": true,
+    "devices": false,
+    "has_audio_input": false,
+    "has_audio_output": false,
+    "has_midi_input": false,
+    "has_midi_output": false,
+    "is_auto_colored": true,
+    "mixer_device": false,
+    "mute": true,
+    "muted_via_solo": false,
+    "name": true,
+    "solo": true
+   }
+  },
+  "ChainMixerDevice.ChainMixerDevice": {
+   "listeners": [
+    "sends"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "chain_activator": false,
+    "panning": false,
+    "sends": false,
+    "volume": false
+   }
+  },
+  "Clip.Clip": {
+   "listeners": [
+    "color",
+    "color_index",
+    "end_marker",
+    "end_time",
+    "file_path",
+    "gain",
+    "groove",
+    "has_envelopes",
+    "is_overdubbing",
+    "is_recording",
+    "launch_mode",
+    "launch_quantization",
+    "legato",
+    "loop_end",
+    "loop_jump",
+    "loop_start",
+    "looping",
+    "muted",
+    "name",
+    "notes",
+    "pitch_coarse",
+    "pitch_fine",
+    "playing_position",
+    "playing_status",
+    "position",
+    "ram_mode",
+    "signature_denominator",
+    "signature_numerator",
+    "start_marker",
+    "start_time",
+    "velocity_amount",
+    "warp_markers",
+    "warp_mode",
+    "warping"
+   ],
+   "methods": [
+    "apply_note_modifications",
+    "automation_envelope",
+    "beat_to_sample_time",
+    "clear_all_envelopes",
+    "clear_envelope",
+    "create_automation_envelope",
+    "crop",
+    "deselect_all_notes",
+    "duplicate_loop",
+    "duplicate_notes_by_id",
+    "duplicate_region",
+    "fire",
+    "get_all_notes_extended",
+    "get_notes",
+    "get_notes_by_id",
+    "get_notes_extended",
+    "get_selected_notes",
+    "get_selected_notes_extended",
+    "move_playing_pos",
+    "move_warp_marker",
+    "note_number_to_name",
+    "quantize",
+    "quantize_pitch",
+    "replace_selected_notes",
+    "sample_to_beat_time",
+    "scrub",
+    "seconds_to_sample_time",
+    "select_all_notes",
+    "select_notes_by_id",
+    "set_fire_button_state",
+    "set_notes",
+    "stop",
+    "stop_scrub"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "automation_envelopes": false,
+    "available_warp_modes": false,
+    "canonical_parent": false,
+    "color": true,
+    "color_index": true,
+    "end_marker": true,
+    "end_time": false,
+    "file_path": false,
+    "gain": true,
+    "gain_display_string": false,
+    "groove": true,
+    "has_envelopes": false,
+    "has_groove": false,
+    "is_arrangement_clip": false,
+    "is_audio_clip": false,
+    "is_midi_clip": false,
+    "is_overdubbing": false,
+    "is_playing": true,
+    "is_recording": false,
+    "is_session_clip": false,
+    "is_take_lane_clip": false,
+    "is_triggered": false,
+    "launch_mode": true,
+    "launch_quantization": true,
+    "legato": true,
+    "length": false,
+    "loop_end": true,
+    "loop_start": true,
+    "looping": true,
+    "muted": true,
+    "name": true,
+    "pitch_coarse": true,
+    "pitch_fine": true,
+    "playing_position": false,
+    "position": true,
+    "ram_mode": true,
+    "sample_length": false,
+    "sample_rate": false,
+    "signature_denominator": true,
+    "signature_numerator": true,
+    "start_marker": true,
+    "start_time": false,
+    "velocity_amount": true,
+    "view": false,
+    "warp_markers": false,
+    "warp_mode": true,
+    "warping": true,
+    "will_record_on_start": false
+   }
+  },
+  "Clip.Clip.View": {
+   "listeners": [],
+   "methods": [
+    "hide_envelope",
+    "select_envelope_parameter",
+    "show_envelope",
+    "show_loop"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "grid_is_triplet": true,
+    "grid_quantization": true
+   }
+  },
+  "Clip.MidiNote": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "duration": true,
+    "mute": true,
+    "note_id": false,
+    "pitch": true,
+    "probability": true,
+    "release_velocity": true,
+    "start_time": true,
+    "velocity": true,
+    "velocity_deviation": true
+   }
+  },
+  "Clip.MidiNoteSpecification": {
+   "listeners": [],
+   "methods": [],
+   "props": {}
+  },
+  "Clip.MidiNoteVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "Clip.WarpMarker": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "beat_time": false,
+    "sample_time": false
+   }
+  },
+  "Clip.WarpMarkerVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "ClipSlot.ClipSlot": {
+   "listeners": [
+    "color",
+    "color_index",
+    "controls_other_clips",
+    "has_clip",
+    "has_stop_button",
+    "is_triggered",
+    "playing_status"
+   ],
+   "methods": [
+    "create_audio_clip",
+    "create_clip",
+    "delete_clip",
+    "duplicate_clip_to",
+    "fire",
+    "set_fire_button_state",
+    "stop"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "clip": false,
+    "color": false,
+    "color_index": false,
+    "controls_other_clips": false,
+    "has_clip": false,
+    "has_stop_button": true,
+    "is_group_slot": false,
+    "is_playing": false,
+    "is_recording": false,
+    "is_triggered": false,
+    "playing_status": false,
+    "will_record_on_start": false
+   }
+  },
+  "CompressorDevice.CompressorDevice": {
+   "listeners": [
+    "available_input_routing_channels",
+    "available_input_routing_types",
+    "input_routing_channel",
+    "input_routing_type",
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "name",
+    "parameters"
+   ],
+   "methods": [
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "available_input_routing_channels": false,
+    "available_input_routing_types": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "input_routing_channel": true,
+    "input_routing_type": true,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "name": true,
+    "parameters": false,
+    "type": false,
+    "view": false
+   }
+  },
+  "CompressorDevice.CompressorDevice.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  },
+  "Device.ATimeableValueVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "Device.Device": {
+   "listeners": [
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "name",
+    "parameters"
+   ],
+   "methods": [
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "name": true,
+    "parameters": false,
+    "type": false,
+    "view": false
+   }
+  },
+  "Device.Device.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  },
+  "DeviceIO.DeviceIO": {
+   "listeners": [
+    "available_routing_channels",
+    "available_routing_types",
+    "routing_channel",
+    "routing_type"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "available_routing_channels": false,
+    "available_routing_types": false,
+    "canonical_parent": false,
+    "default_external_routing_channel_is_none": true,
+    "routing_channel": true,
+    "routing_type": true
+   }
+  },
+  "DeviceParameter.DeviceParameter": {
+   "listeners": [
+    "automation_state",
+    "display_value",
+    "name",
+    "state",
+    "value"
+   ],
+   "methods": [
+    "begin_gesture",
+    "end_gesture",
+    "re_enable_automation",
+    "str_for_value"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "automation_state": false,
+    "canonical_parent": false,
+    "default_value": false,
+    "display_value": true,
+    "is_enabled": false,
+    "is_quantized": false,
+    "max": false,
+    "min": false,
+    "name": false,
+    "original_name": false,
+    "short_value_items": false,
+    "state": false,
+    "value": true,
+    "value_items": false
+   }
+  },
+  "DriftDevice.DriftDevice": {
+   "listeners": [
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "mod_matrix_filter_source_1_index",
+    "mod_matrix_filter_source_2_index",
+    "mod_matrix_lfo_source_index",
+    "mod_matrix_pitch_source_1_index",
+    "mod_matrix_pitch_source_2_index",
+    "mod_matrix_shape_source_index",
+    "mod_matrix_source_1_index",
+    "mod_matrix_source_2_index",
+    "mod_matrix_source_3_index",
+    "mod_matrix_target_1_index",
+    "mod_matrix_target_2_index",
+    "mod_matrix_target_3_index",
+    "name",
+    "parameters",
+    "pitch_bend_range",
+    "voice_count_index",
+    "voice_mode_index"
+   ],
+   "methods": [
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "mod_matrix_filter_source_1_index": true,
+    "mod_matrix_filter_source_1_list": false,
+    "mod_matrix_filter_source_2_index": true,
+    "mod_matrix_filter_source_2_list": false,
+    "mod_matrix_lfo_source_index": true,
+    "mod_matrix_lfo_source_list": false,
+    "mod_matrix_pitch_source_1_index": true,
+    "mod_matrix_pitch_source_1_list": false,
+    "mod_matrix_pitch_source_2_index": true,
+    "mod_matrix_pitch_source_2_list": false,
+    "mod_matrix_shape_source_index": true,
+    "mod_matrix_shape_source_list": false,
+    "mod_matrix_source_1_index": true,
+    "mod_matrix_source_1_list": false,
+    "mod_matrix_source_2_index": true,
+    "mod_matrix_source_2_list": false,
+    "mod_matrix_source_3_index": true,
+    "mod_matrix_source_3_list": false,
+    "mod_matrix_target_1_index": true,
+    "mod_matrix_target_1_list": false,
+    "mod_matrix_target_2_index": true,
+    "mod_matrix_target_2_list": false,
+    "mod_matrix_target_3_index": true,
+    "mod_matrix_target_3_list": false,
+    "name": true,
+    "parameters": false,
+    "pitch_bend_range": true,
+    "type": false,
+    "view": false,
+    "voice_count_index": true,
+    "voice_count_list": false,
+    "voice_mode_index": true,
+    "voice_mode_list": false
+   }
+  },
+  "DriftDevice.DriftDevice.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  },
+  "DrumCellDevice.DrumCellDevice": {
+   "listeners": [
+    "gain",
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "name",
+    "parameters"
+   ],
+   "methods": [
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "gain": true,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "name": true,
+    "parameters": false,
+    "type": false,
+    "view": false
+   }
+  },
+  "DrumCellDevice.DrumCellDevice.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  },
+  "DrumChain.DrumChain": {
+   "listeners": [
+    "choke_group",
+    "color",
+    "color_index",
+    "devices",
+    "in_note",
+    "is_auto_colored",
+    "mute",
+    "muted_via_solo",
+    "name",
+    "out_note",
+    "solo"
+   ],
+   "methods": [
+    "delete_device",
+    "duplicate_device",
+    "insert_device"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "choke_group": true,
+    "color": true,
+    "color_index": true,
+    "devices": false,
+    "has_audio_input": false,
+    "has_audio_output": false,
+    "has_midi_input": false,
+    "has_midi_output": false,
+    "in_note": true,
+    "is_auto_colored": true,
+    "mixer_device": false,
+    "mute": true,
+    "muted_via_solo": false,
+    "name": true,
+    "out_note": true,
+    "solo": true
+   }
+  },
+  "DrumPad.DrumPad": {
+   "listeners": [
+    "chains",
+    "mute",
+    "name",
+    "solo"
+   ],
+   "methods": [
+    "delete_all_chains"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "chains": false,
+    "mute": true,
+    "name": false,
+    "note": false,
+    "solo": true
+   }
+  },
+  "Envelope.Envelope": {
+   "listeners": [],
+   "methods": [
+    "create_event",
+    "delete_events_in_range",
+    "events_in_range",
+    "insert_step",
+    "value_at_time"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "parameter": false
+   }
+  },
+  "Envelope.EnvelopeEvent": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "control_coefficients": true,
+    "time": true,
+    "value": true
+   }
+  },
+  "Envelope.EnvelopeEventControlCoefficients": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "x1": true,
+    "x2": true,
+    "y1": true,
+    "y2": true
+   }
+  },
+  "Envelope.EnvelopeEventVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "Eq8Device.Eq8Device": {
+   "listeners": [
+    "edit_mode",
+    "global_mode",
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "name",
+    "oversample",
+    "parameters"
+   ],
+   "methods": [
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "edit_mode": true,
+    "global_mode": true,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "name": true,
+    "oversample": true,
+    "parameters": false,
+    "type": false,
+    "view": false
+   }
+  },
+  "Eq8Device.Eq8Device.View": {
+   "listeners": [
+    "is_collapsed",
+    "selected_band"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true,
+    "selected_band": true
+   }
+  },
+  "Groove.Groove": {
+   "listeners": [
+    "name",
+    "quantization_amount",
+    "random_amount",
+    "timing_amount",
+    "velocity_amount"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "base": true,
+    "canonical_parent": false,
+    "name": true,
+    "quantization_amount": true,
+    "random_amount": true,
+    "timing_amount": true,
+    "velocity_amount": true
+   }
+  },
+  "GroovePool.GroovePool": {
+   "listeners": [
+    "grooves"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "grooves": false
+   }
+  },
+  "HybridReverbDevice.HybridReverbDevice": {
+   "listeners": [
+    "ir_attack_time",
+    "ir_category_index",
+    "ir_decay_time",
+    "ir_file_index",
+    "ir_file_list",
+    "ir_size_factor",
+    "ir_time_shaping_on",
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "name",
+    "parameters"
+   ],
+   "methods": [
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "ir_attack_time": true,
+    "ir_category_index": true,
+    "ir_category_list": false,
+    "ir_decay_time": true,
+    "ir_file_index": true,
+    "ir_file_list": false,
+    "ir_size_factor": true,
+    "ir_time_shaping_on": true,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "name": true,
+    "parameters": false,
+    "type": false,
+    "view": false
+   }
+  },
+  "HybridReverbDevice.HybridReverbDevice.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  },
+  "Licensing.ProgressDialog": {
+   "listeners": [],
+   "methods": [
+    "end_modal_loop",
+    "run_in_modal_loop",
+    "set_status_message"
+   ],
+   "props": {}
+  },
+  "Licensing.PythonLicensingBridge": {
+   "listeners": [],
+   "methods": [
+    "authorize_with_sassafras",
+    "create_new_live_set",
+    "deauthenticate_user",
+    "get_progress_dialog",
+    "get_session_id",
+    "get_startup_dialog",
+    "get_trial_time_left",
+    "invoke_pack_installation_callback",
+    "load_and_convert_legacy_unlock_cfg",
+    "process_license_response",
+    "process_trial_response",
+    "request_exit",
+    "save_current_set",
+    "set_network_timer",
+    "store_session_identifiers"
+   ],
+   "props": {
+    "base_product_id": false,
+    "in_sassafras_mode": false,
+    "license_must_match_variant": false,
+    "random_number_for_trial_authorization": false,
+    "set_has_unsaved_changes": false
+   }
+  },
+  "Licensing.StartupDialogServes as an entry point for the user to authorize Live on first launch.": {
+   "listeners": [],
+   "methods": [
+    "end_modal_loop",
+    "run_in_modal_loop",
+    "set_notification_message"
+   ],
+   "props": {}
+  },
+  "Licensing.UnlockStatus": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "authorization_deactivated": false,
+    "authorization_expired": false,
+    "has_max_unlock_products": false,
+    "temp_demo_mode": false,
+    "time_limited": false,
+    "unlock_error": false,
+    "unlocked": false
+   }
+  },
+  "Listener.ListenerHandle": {
+   "listeners": [],
+   "methods": [
+    "disconnect"
+   ],
+   "props": {
+    "listener_func": false,
+    "listener_self": false,
+    "name": false
+   }
+  },
+  "Listener.ListenerVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "LomObject.LomObject": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "_live_ptr": false
+   }
+  },
+  "LooperDevice.LooperDevice": {
+   "listeners": [
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "loop_length",
+    "name",
+    "overdub_after_record",
+    "parameters",
+    "record_length_index",
+    "tempo"
+   ],
+   "methods": [
+    "clear",
+    "double_length",
+    "double_speed",
+    "export_to_clip_slot",
+    "half_length",
+    "half_speed",
+    "overdub",
+    "play",
+    "record",
+    "save_preset_to_compare_ab_slot",
+    "stop",
+    "store_chosen_bank",
+    "undo"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "loop_length": false,
+    "name": true,
+    "overdub_after_record": true,
+    "parameters": false,
+    "record_length_index": true,
+    "record_length_list": false,
+    "tempo": false,
+    "type": false,
+    "view": false
+   }
+  },
+  "LooperDevice.LooperDevice.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  },
+  "MaxDevice.MaxDevice": {
+   "listeners": [
+    "audio_inputs",
+    "audio_outputs",
+    "bank_parameters_changed",
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "midi_inputs",
+    "midi_outputs",
+    "name",
+    "parameters"
+   ],
+   "methods": [
+    "get_bank_count",
+    "get_bank_name",
+    "get_bank_parameters",
+    "get_value_item_icons",
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "audio_inputs": false,
+    "audio_outputs": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "midi_inputs": false,
+    "midi_outputs": false,
+    "name": true,
+    "parameters": false,
+    "type": false,
+    "view": false
+   }
+  },
+  "MaxDevice.MaxDevice.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  },
+  "MeldDevice.MeldDevice": {
+   "listeners": [
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "mono_poly",
+    "name",
+    "parameters",
+    "poly_voices",
+    "selected_engine",
+    "unison_voices"
+   ],
+   "methods": [
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "mono_poly": true,
+    "name": true,
+    "parameters": false,
+    "poly_voices": true,
+    "selected_engine": true,
+    "type": false,
+    "unison_voices": true,
+    "view": false
+   }
+  },
+  "MeldDevice.MeldDevice.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  },
+  "MidiMap.CCFeedbackRule": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "cc_no": true,
+    "cc_value_map": true,
+    "channel": true,
+    "delay_in_ms": true,
+    "enabled": true
+   }
+  },
+  "MidiMap.NoteFeedbackRule": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "channel": true,
+    "delay_in_ms": true,
+    "enabled": true,
+    "note_no": true,
+    "vel_map": true
+   }
+  },
+  "MidiMap.PitchBendFeedbackRule": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "channel": true,
+    "delay_in_ms": true,
+    "enabled": true,
+    "value_pair_map": true
+   }
+  },
+  "MixerDevice.MixerDevice": {
+   "listeners": [
+    "crossfade_assign",
+    "panning_mode",
+    "sends"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "crossfade_assign": true,
+    "crossfader": false,
+    "cue_volume": false,
+    "left_split_stereo": false,
+    "panning": false,
+    "panning_mode": true,
+    "right_split_stereo": false,
+    "sends": false,
+    "song_tempo": false,
+    "track_activator": false,
+    "volume": false
+   }
+  },
+  "PluginDevice.PluginDevice": {
+   "listeners": [
+    "is_active",
+    "is_editor_open",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "name",
+    "parameters",
+    "presets",
+    "selected_preset_index"
+   ],
+   "methods": [
+    "get_parameter_names",
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "is_active": false,
+    "is_editor_open": true,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "name": true,
+    "parameters": false,
+    "presets": false,
+    "selected_preset_index": true,
+    "type": false,
+    "view": false
+   }
+  },
+  "PluginDevice.PluginDevice.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  },
+  "RackDevice.RackDevice": {
+   "listeners": [
+    "chains",
+    "drum_pads",
+    "has_drum_pads",
+    "has_macro_mappings",
+    "is_active",
+    "is_showing_chains",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "macros_mapped",
+    "name",
+    "parameters",
+    "return_chains",
+    "variation_count",
+    "visible_drum_pads",
+    "visible_macro_count"
+   ],
+   "methods": [
+    "copy_pad",
+    "delete_selected_variation",
+    "insert_chain",
+    "randomize_macros",
+    "recall_last_used_variation",
+    "recall_selected_variation",
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank",
+    "store_variation"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "can_show_chains": false,
+    "canonical_parent": false,
+    "chain_selector": false,
+    "chains": false,
+    "class_display_name": false,
+    "class_name": false,
+    "drum_pads": false,
+    "has_drum_pads": false,
+    "has_macro_mappings": false,
+    "is_active": false,
+    "is_showing_chains": true,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "macros_mapped": false,
+    "name": true,
+    "parameters": false,
+    "return_chains": false,
+    "selected_variation_index": true,
+    "type": false,
+    "variation_count": false,
+    "view": false,
+    "visible_drum_pads": false,
+    "visible_macro_count": false
+   }
+  },
+  "RackDevice.RackDevice.View": {
+   "listeners": [
+    "drum_pads_scroll_position",
+    "is_collapsed",
+    "is_showing_chain_devices",
+    "selected_chain",
+    "selected_drum_pad"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "drum_pads_scroll_position": true,
+    "is_collapsed": true,
+    "is_showing_chain_devices": true,
+    "selected_chain": true,
+    "selected_drum_pad": true
+   }
+  },
+  "RoarDevice.RoarDevice": {
+   "listeners": [
+    "env_listen",
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "name",
+    "parameters",
+    "routing_mode_index"
+   ],
+   "methods": [
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "env_listen": true,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "name": true,
+    "parameters": false,
+    "routing_mode_index": true,
+    "routing_mode_list": false,
+    "type": false,
+    "view": false
+   }
+  },
+  "RoarDevice.RoarDevice.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  },
+  "Sample.Sample": {
+   "listeners": [
+    "beats_granulation_resolution",
+    "beats_transient_envelope",
+    "beats_transient_loop_mode",
+    "complex_pro_envelope",
+    "complex_pro_formants",
+    "end_marker",
+    "file_path",
+    "gain",
+    "slices",
+    "slicing_beat_division",
+    "slicing_region_count",
+    "slicing_sensitivity",
+    "slicing_style",
+    "start_marker",
+    "texture_flux",
+    "texture_grain_size",
+    "tones_grain_size",
+    "warp_markers",
+    "warp_mode",
+    "warping"
+   ],
+   "methods": [
+    "beat_to_sample_time",
+    "clear_slices",
+    "gain_display_string",
+    "insert_slice",
+    "move_slice",
+    "reset_slices",
+    "sample_to_beat_time"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "beats_granulation_resolution": true,
+    "beats_transient_envelope": true,
+    "beats_transient_loop_mode": true,
+    "canonical_parent": false,
+    "complex_pro_envelope": true,
+    "complex_pro_formants": true,
+    "end_marker": true,
+    "file_path": false,
+    "gain": true,
+    "length": false,
+    "sample_rate": false,
+    "slices": false,
+    "slicing_beat_division": true,
+    "slicing_region_count": true,
+    "slicing_sensitivity": true,
+    "slicing_style": true,
+    "start_marker": true,
+    "texture_flux": true,
+    "texture_grain_size": true,
+    "tones_grain_size": true,
+    "warp_markers": false,
+    "warp_mode": true,
+    "warping": true
+   }
+  },
+  "Scene.Scene": {
+   "listeners": [
+    "clip_slots",
+    "color",
+    "color_index",
+    "is_triggered",
+    "name",
+    "tempo",
+    "tempo_enabled",
+    "time_signature_denominator",
+    "time_signature_enabled",
+    "time_signature_numerator"
+   ],
+   "methods": [
+    "fire",
+    "fire_as_selected",
+    "set_fire_button_state"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "clip_slots": false,
+    "color": true,
+    "color_index": true,
+    "is_empty": false,
+    "is_triggered": false,
+    "name": true,
+    "tempo": true,
+    "tempo_enabled": true,
+    "time_signature_denominator": true,
+    "time_signature_enabled": true,
+    "time_signature_numerator": true
+   }
+  },
+  "ShifterDevice.ShifterDevice": {
+   "listeners": [
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "name",
+    "parameters",
+    "pitch_bend_range",
+    "pitch_mode_index"
+   ],
+   "methods": [
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "name": true,
+    "parameters": false,
+    "pitch_bend_range": true,
+    "pitch_mode_index": true,
+    "pitch_mode_list": false,
+    "type": false,
+    "view": false
+   }
+  },
+  "ShifterDevice.ShifterDevice.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  },
+  "SimplerDevice.SimplerDevice": {
+   "listeners": [
+    "can_warp_as",
+    "can_warp_double",
+    "can_warp_half",
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "multi_sample_mode",
+    "name",
+    "note_pitch_bend_range",
+    "pad_slicing",
+    "parameters",
+    "pitch_bend_range",
+    "playback_mode",
+    "playing_position",
+    "playing_position_enabled",
+    "retrigger",
+    "sample",
+    "slicing_playback_mode",
+    "voices"
+   ],
+   "methods": [
+    "crop",
+    "guess_playback_length",
+    "replace_sample",
+    "reverse",
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank",
+    "warp_as",
+    "warp_double",
+    "warp_half"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "can_warp_as": false,
+    "can_warp_double": false,
+    "can_warp_half": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "multi_sample_mode": false,
+    "name": true,
+    "note_pitch_bend_range": true,
+    "pad_slicing": true,
+    "parameters": false,
+    "pitch_bend_range": true,
+    "playback_mode": true,
+    "playing_position": false,
+    "playing_position_enabled": false,
+    "retrigger": true,
+    "sample": false,
+    "slicing_playback_mode": true,
+    "type": false,
+    "view": false,
+    "voices": true
+   }
+  },
+  "SimplerDevice.SimplerDevice.View": {
+   "listeners": [
+    "is_collapsed",
+    "sample_end",
+    "sample_env_fade_in",
+    "sample_env_fade_out",
+    "sample_loop_end",
+    "sample_loop_fade",
+    "sample_loop_start",
+    "sample_start",
+    "selected_slice"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true,
+    "sample_end": false,
+    "sample_env_fade_in": false,
+    "sample_env_fade_out": false,
+    "sample_loop_end": false,
+    "sample_loop_fade": false,
+    "sample_loop_start": false,
+    "sample_start": false,
+    "selected_slice": true
+   }
+  },
+  "Song.BeatTime": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "bars": true,
+    "beats": true,
+    "sub_division": true,
+    "ticks": true
+   }
+  },
+  "Song.CuePoint": {
+   "listeners": [
+    "name",
+    "time"
+   ],
+   "methods": [
+    "jump"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "name": true,
+    "time": false
+   }
+  },
+  "Song.SmptTime": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "frames": true,
+    "hours": true,
+    "minutes": true,
+    "seconds": true
+   }
+  },
+  "Song.Song": {
+   "listeners": [
+    "appointed_device",
+    "arrangement_overdub",
+    "back_to_arranger",
+    "can_capture_midi",
+    "can_jump_to_next_cue",
+    "can_jump_to_prev_cue",
+    "clip_trigger_quantization",
+    "count_in_duration",
+    "cue_points",
+    "current_song_time",
+    "data",
+    "exclusive_arm",
+    "groove_amount",
+    "is_ableton_link_enabled",
+    "is_ableton_link_start_stop_sync_enabled",
+    "is_counting_in",
+    "is_playing",
+    "loop",
+    "loop_length",
+    "loop_start",
+    "metronome",
+    "midi_recording_quantization",
+    "nudge_down",
+    "nudge_up",
+    "overdub",
+    "punch_in",
+    "punch_out",
+    "re_enable_automation_enabled",
+    "record_mode",
+    "return_tracks",
+    "root_note",
+    "scale_information",
+    "scale_intervals",
+    "scale_mode",
+    "scale_name",
+    "scenes",
+    "session_automation_record",
+    "session_record",
+    "session_record_status",
+    "signature_denominator",
+    "signature_numerator",
+    "song_length",
+    "start_time",
+    "swing_amount",
+    "tempo",
+    "tempo_follower_enabled",
+    "tracks",
+    "tuning_system",
+    "visible_tracks"
+   ],
+   "methods": [
+    "begin_undo_step",
+    "capture_and_insert_scene",
+    "capture_midi",
+    "continue_playing",
+    "create_audio_track",
+    "create_midi_track",
+    "create_return_track",
+    "create_scene",
+    "delete_return_track",
+    "delete_scene",
+    "delete_track",
+    "duplicate_scene",
+    "duplicate_track",
+    "end_undo_step",
+    "find_device_position",
+    "force_link_beat_time",
+    "get_beats_loop_length",
+    "get_beats_loop_start",
+    "get_current_beats_song_time",
+    "get_current_smpte_song_time",
+    "get_data",
+    "is_cue_point_selected",
+    "jump_by",
+    "jump_to_next_cue",
+    "jump_to_prev_cue",
+    "move_device",
+    "play_selection",
+    "re_enable_automation",
+    "redo",
+    "scrub_by",
+    "set_data",
+    "set_or_delete_cue",
+    "start_playing",
+    "stop_all_clips",
+    "stop_playing",
+    "sync_parameter_changes",
+    "tap_tempo",
+    "trigger_session_record",
+    "undo"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "appointed_device": true,
+    "arrangement_overdub": true,
+    "back_to_arranger": true,
+    "can_capture_midi": false,
+    "can_jump_to_next_cue": false,
+    "can_jump_to_prev_cue": false,
+    "can_redo": false,
+    "can_undo": false,
+    "canonical_parent": false,
+    "clip_trigger_quantization": true,
+    "count_in_duration": false,
+    "cue_points": false,
+    "current_song_time": true,
+    "exclusive_arm": false,
+    "exclusive_solo": false,
+    "file_path": false,
+    "groove_amount": true,
+    "groove_pool": false,
+    "is_ableton_link_enabled": true,
+    "is_ableton_link_start_stop_sync_enabled": true,
+    "is_counting_in": false,
+    "is_playing": true,
+    "last_event_time": false,
+    "loop": true,
+    "loop_length": true,
+    "loop_start": true,
+    "master_track": false,
+    "metronome": true,
+    "midi_recording_quantization": true,
+    "name": false,
+    "nudge_down": true,
+    "nudge_up": true,
+    "overdub": true,
+    "punch_in": true,
+    "punch_out": true,
+    "re_enable_automation_enabled": false,
+    "record_mode": true,
+    "return_tracks": false,
+    "root_note": true,
+    "scale_intervals": false,
+    "scale_mode": true,
+    "scale_name": true,
+    "scenes": false,
+    "select_on_launch": false,
+    "session_automation_record": true,
+    "session_record": true,
+    "session_record_status": false,
+    "signature_denominator": true,
+    "signature_numerator": true,
+    "song_length": false,
+    "start_time": true,
+    "swing_amount": true,
+    "tempo": true,
+    "tempo_follower_enabled": true,
+    "tracks": false,
+    "tuning_system": false,
+    "view": false,
+    "visible_tracks": false
+   }
+  },
+  "Song.Song.View": {
+   "listeners": [
+    "detail_clip",
+    "draw_mode",
+    "follow_song",
+    "mod_mapping_device",
+    "mod_mapping_parameter",
+    "selected_chain",
+    "selected_parameter",
+    "selected_scene",
+    "selected_track"
+   ],
+   "methods": [
+    "select_device"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "detail_clip": true,
+    "draw_mode": true,
+    "follow_song": true,
+    "highlighted_clip_slot": true,
+    "mod_mapping_device": true,
+    "mod_mapping_parameter": false,
+    "selected_chain": true,
+    "selected_parameter": false,
+    "selected_scene": true,
+    "selected_track": true
+   }
+  },
+  "SpectralResonatorDevice.SpectralResonatorDevice": {
+   "listeners": [
+    "frequency_dial_mode",
+    "frequency_dial_mode_list",
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "midi_gate",
+    "midi_gate_list",
+    "mod_mode",
+    "mod_mode_list",
+    "mono_poly",
+    "mono_poly_list",
+    "name",
+    "parameters",
+    "pitch_bend_range",
+    "pitch_mode",
+    "pitch_mode_list",
+    "polyphony"
+   ],
+   "methods": [
+    "save_preset_to_compare_ab_slot",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "frequency_dial_mode": true,
+    "frequency_dial_mode_list": false,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "midi_gate": true,
+    "midi_gate_list": false,
+    "mod_mode": true,
+    "mod_mode_list": false,
+    "mono_poly": true,
+    "mono_poly_list": false,
+    "name": true,
+    "parameters": false,
+    "pitch_bend_range": true,
+    "pitch_mode": true,
+    "pitch_mode_list": false,
+    "polyphony": true,
+    "type": false,
+    "view": false
+   }
+  },
+  "SpectralResonatorDevice.SpectralResonatorDevice.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  },
+  "TakeLane.TakeLane": {
+   "listeners": [
+    "arrangement_clips",
+    "name"
+   ],
+   "methods": [
+    "create_audio_clip",
+    "create_midi_clip"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "arrangement_clips": false,
+    "canonical_parent": false,
+    "name": true
+   }
+  },
+  "Track.DeviceContainer": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "_live_ptr": false
+   }
+  },
+  "Track.RoutingChannel": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "display_name": false,
+    "layout": false
+   }
+  },
+  "Track.RoutingChannelVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "Track.RoutingType": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "attached_object": false,
+    "category": false,
+    "display_name": false
+   }
+  },
+  "Track.RoutingTypeVector": {
+   "listeners": [],
+   "methods": [
+    "append",
+    "extend"
+   ],
+   "props": {}
+  },
+  "Track.Track": {
+   "listeners": [
+    "arm",
+    "arrangement_clips",
+    "available_input_routing_channels",
+    "available_input_routing_types",
+    "available_output_routing_channels",
+    "available_output_routing_types",
+    "back_to_arranger",
+    "clip_slots",
+    "color",
+    "color_index",
+    "current_input_routing",
+    "current_input_sub_routing",
+    "current_monitoring_state",
+    "current_output_routing",
+    "current_output_sub_routing",
+    "data",
+    "devices",
+    "fired_slot_index",
+    "has_audio_input",
+    "has_audio_output",
+    "has_midi_input",
+    "has_midi_output",
+    "implicit_arm",
+    "input_meter_left",
+    "input_meter_level",
+    "input_meter_right",
+    "input_routing_channel",
+    "input_routing_type",
+    "input_routings",
+    "input_sub_routings",
+    "is_frozen",
+    "is_showing_chains",
+    "mute",
+    "muted_via_solo",
+    "name",
+    "output_meter_left",
+    "output_meter_level",
+    "output_meter_right",
+    "output_routing_channel",
+    "output_routing_type",
+    "output_routings",
+    "output_sub_routings",
+    "performance_impact",
+    "playing_slot_index",
+    "solo",
+    "take_lanes"
+   ],
+   "methods": [
+    "create_audio_clip",
+    "create_midi_clip",
+    "create_take_lane",
+    "delete_clip",
+    "delete_device",
+    "duplicate_clip_slot",
+    "duplicate_clip_to_arrangement",
+    "duplicate_device",
+    "get_data",
+    "insert_device",
+    "jump_in_running_session_clip",
+    "set_data",
+    "stop_all_clips"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "arm": true,
+    "arrangement_clips": false,
+    "available_input_routing_channels": false,
+    "available_input_routing_types": false,
+    "available_output_routing_channels": false,
+    "available_output_routing_types": false,
+    "back_to_arranger": true,
+    "can_be_armed": false,
+    "can_be_frozen": false,
+    "can_show_chains": false,
+    "canonical_parent": false,
+    "clip_slots": false,
+    "color": true,
+    "color_index": true,
+    "current_input_routing": true,
+    "current_input_sub_routing": true,
+    "current_monitoring_state": true,
+    "current_output_routing": true,
+    "current_output_sub_routing": true,
+    "devices": false,
+    "fired_slot_index": false,
+    "fold_state": true,
+    "group_track": false,
+    "has_audio_input": false,
+    "has_audio_output": false,
+    "has_midi_input": false,
+    "has_midi_output": false,
+    "implicit_arm": true,
+    "input_meter_left": false,
+    "input_meter_level": false,
+    "input_meter_right": false,
+    "input_routing_channel": true,
+    "input_routing_type": true,
+    "input_routings": false,
+    "input_sub_routings": false,
+    "is_foldable": false,
+    "is_frozen": false,
+    "is_grouped": false,
+    "is_part_of_selection": false,
+    "is_showing_chains": true,
+    "is_visible": false,
+    "mixer_device": false,
+    "mute": true,
+    "muted_via_solo": false,
+    "name": true,
+    "output_meter_left": false,
+    "output_meter_level": false,
+    "output_meter_right": false,
+    "output_routing_channel": true,
+    "output_routing_type": true,
+    "output_routings": false,
+    "output_sub_routings": false,
+    "performance_impact": false,
+    "playing_slot_index": false,
+    "solo": true,
+    "take_lanes": false,
+    "view": false
+   }
+  },
+  "Track.Track.View": {
+   "listeners": [
+    "device_insert_mode",
+    "is_collapsed",
+    "selected_device"
+   ],
+   "methods": [
+    "select_instrument"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "device_insert_mode": true,
+    "is_collapsed": true,
+    "selected_device": false
+   }
+  },
+  "TuningSystem.PitchClassAndOctave": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "index_in_octave": false,
+    "octave": false
+   }
+  },
+  "TuningSystem.ReferencePitch": {
+   "listeners": [],
+   "methods": [],
+   "props": {
+    "frequency": false,
+    "index_in_octave": false,
+    "octave": false
+   }
+  },
+  "TuningSystem.TuningSystem": {
+   "listeners": [
+    "highest_note",
+    "lowest_note",
+    "name",
+    "note_tunings",
+    "reference_pitch"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "highest_note": true,
+    "lowest_note": true,
+    "name": true,
+    "note_tunings": true,
+    "number_of_notes_in_pseudo_octave": false,
+    "pseudo_octave_in_cents": false,
+    "reference_pitch": true
+   }
+  },
+  "WavetableDevice.WavetableDevice": {
+   "listeners": [
+    "filter_routing",
+    "is_active",
+    "is_using_compare_preset_b",
+    "latency_in_ms",
+    "latency_in_samples",
+    "modulation_matrix_changed",
+    "mono_poly",
+    "name",
+    "oscillator_1_effect_mode",
+    "oscillator_1_wavetable_category",
+    "oscillator_1_wavetable_index",
+    "oscillator_1_wavetables",
+    "oscillator_2_effect_mode",
+    "oscillator_2_wavetable_category",
+    "oscillator_2_wavetable_index",
+    "oscillator_2_wavetables",
+    "parameters",
+    "poly_voices",
+    "unison_mode",
+    "unison_voice_count",
+    "visible_modulation_target_names"
+   ],
+   "methods": [
+    "get_modulation_target_parameter_name",
+    "get_modulation_value",
+    "is_parameter_modulatable",
+    "save_preset_to_compare_ab_slot",
+    "set_modulation_value",
+    "store_chosen_bank"
+   ],
+   "props": {
+    "_live_ptr": false,
+    "can_compare_ab": false,
+    "can_have_chains": false,
+    "can_have_drum_pads": false,
+    "canonical_parent": false,
+    "class_display_name": false,
+    "class_name": false,
+    "filter_routing": true,
+    "is_active": false,
+    "is_using_compare_preset_b": true,
+    "latency_in_ms": false,
+    "latency_in_samples": false,
+    "mono_poly": true,
+    "name": true,
+    "oscillator_1_effect_mode": true,
+    "oscillator_1_wavetable_category": true,
+    "oscillator_1_wavetable_index": true,
+    "oscillator_1_wavetables": false,
+    "oscillator_2_effect_mode": true,
+    "oscillator_2_wavetable_category": true,
+    "oscillator_2_wavetable_index": true,
+    "oscillator_2_wavetables": false,
+    "oscillator_wavetable_categories": false,
+    "parameters": false,
+    "poly_voices": true,
+    "type": false,
+    "unison_mode": true,
+    "unison_voice_count": true,
+    "view": false,
+    "visible_modulation_target_names": false
+   }
+  },
+  "WavetableDevice.WavetableDevice.View": {
+   "listeners": [
+    "is_collapsed"
+   ],
+   "methods": [],
+   "props": {
+    "_live_ptr": false,
+    "canonical_parent": false,
+    "is_collapsed": true
+   }
+  }
+ },
+ "enums": {
+  "Application.MessageButtons": {
+   "OK_ACCOUNT_BUTTON": 4,
+   "OK_BUTTON": 0,
+   "OK_NEW_SET_BUTTON": 1,
+   "OK_PURCHASE_BUTTON": 5,
+   "OK_RETRY_BUTTON": 2,
+   "SAVE_DONT_SAVE_BUTTON": 3
+  },
+  "Application.PushDialogType": {
+   "MESSAGE_BOX": 0,
+   "OUT_OF_UNLOCKS_DIALOG": 5,
+   "RENT_TO_OWN_LICENSE_EXPIRED_DIALOG": 7
+  },
+  "Application.UnavailableFeature": {
+   "note_velocity_ranges_and_probabilities": 0
+  },
+  "Browser.FilterType": {
+   "audio_effect_hotswap": 2,
+   "count": 7,
+   "disabled": -1,
+   "drum_pad_hotswap": 4,
+   "hotswap_off": 0,
+   "instrument_hotswap": 1,
+   "midi_effect_hotswap": 3,
+   "midi_track_devices": 5,
+   "samples": 6
+  },
+  "Browser.Relation": {
+   "ancestor": 0,
+   "descendant": 2,
+   "equal": 1,
+   "none": 3
+  },
+  "Clip.ClipLaunchQuantization": {
+   "q_2_bars": 4,
+   "q_4_bars": 3,
+   "q_8_bars": 2,
+   "q_bar": 5,
+   "q_eighth": 10,
+   "q_eighth_triplet": 11,
+   "q_global": 0,
+   "q_half": 6,
+   "q_half_triplet": 7,
+   "q_none": 1,
+   "q_quarter": 8,
+   "q_quarter_triplet": 9,
+   "q_sixteenth": 12,
+   "q_sixteenth_triplet": 13,
+   "q_thirtysecond": 14
+  },
+  "Clip.GridQuantization": {
+   "count": 10,
+   "g_2_bars": 3,
+   "g_4_bars": 2,
+   "g_8_bars": 1,
+   "g_bar": 4,
+   "g_eighth": 7,
+   "g_half": 5,
+   "g_quarter": 6,
+   "g_sixteenth": 8,
+   "g_thirtysecond": 9,
+   "no_grid": 0
+  },
+  "Clip.LaunchMode": {
+   "gate": 1,
+   "repeat": 3,
+   "toggle": 2,
+   "trigger": 0
+  },
+  "Clip.WarpMode": {
+   "beats": 0,
+   "complex": 4,
+   "complex_pro": 6,
+   "count": 7,
+   "repitch": 3,
+   "rex": 5,
+   "texture": 2,
+   "tones": 1
+  },
+  "ClipSlot.ClipSlotPlayingState": {
+   "recording": 2,
+   "started": 1,
+   "stopped": 0
+  },
+  "Conversions.AudioToMidiType": {
+   "drums_to_midi": 2,
+   "harmony_to_midi": 0,
+   "melody_to_midi": 1
+  },
+  "Device.DeviceType": {
+   "audio_effect": 2,
+   "instrument": 1,
+   "midi_effect": 4,
+   "undefined": 0
+  },
+  "DeviceParameter.AutomationState": {
+   "none": 0,
+   "overridden": 2,
+   "playing": 1
+  },
+  "DeviceParameter.ParameterState": {
+   "disabled": 2,
+   "enabled": 0,
+   "irrelevant": 1
+  },
+  "Eq8Device.EditMode": {
+   "a": 0,
+   "b": 1
+  },
+  "Eq8Device.GlobalMode": {
+   "left_right": 1,
+   "mid_side": 2,
+   "stereo": 0
+  },
+  "Groove.Base": {
+   "count": 6,
+   "gb_eight": 1,
+   "gb_eight_triplet": 2,
+   "gb_four": 0,
+   "gb_sixteen": 3,
+   "gb_sixteen_triplet": 4,
+   "gb_thirtytwo": 5
+  },
+  "Licensing.TrialContext": {
+   "FORCE_UPDATE": 2,
+   "SAVE": 0,
+   "STARTUP": 3
+  },
+  "MidiMap.MapMode": {
+   "absolute": 0,
+   "absolute_14_bit": 5,
+   "relative_binary_offset": 2,
+   "relative_signed_bit": 1,
+   "relative_signed_bit2": 4,
+   "relative_smooth_binary_offset": 7,
+   "relative_smooth_signed_bit": 6,
+   "relative_smooth_signed_bit2": 9,
+   "relative_smooth_two_compliment": 8,
+   "relative_two_compliment": 3
+  },
+  "MixerDevice.MixerDevice.crossfade_assignments": {
+   "A": 0,
+   "B": 2,
+   "NONE": 1
+  },
+  "MixerDevice.MixerDevice.panning_modes": {
+   "stereo": 0,
+   "stereo_split": 1
+  },
+  "Sample.SlicingBeatDivision": {
+   "eighth": 2,
+   "eighth_triplett": 3,
+   "four_bars": 10,
+   "half": 6,
+   "half_triplett": 7,
+   "one_bar": 8,
+   "quarter": 4,
+   "quarter_triplett": 5,
+   "sixteenth": 0,
+   "sixteenth_triplett": 1,
+   "two_bars": 9
+  },
+  "Sample.SlicingStyle": {
+   "beat": 1,
+   "manual": 3,
+   "region": 2,
+   "transient": 0
+  },
+  "Sample.TransientLoopMode": {
+   "alternate": 2,
+   "forward": 1,
+   "off": 0
+  },
+  "SimplerDevice.PlaybackMode": {
+   "classic": 0,
+   "one_shot": 1,
+   "slicing": 2
+  },
+  "SimplerDevice.SlicingPlaybackMode": {
+   "mono": 0,
+   "poly": 1,
+   "thru": 2
+  },
+  "Song.CaptureDestination": {
+   "arrangement": 2,
+   "auto": 0,
+   "session": 1
+  },
+  "Song.CaptureMode": {
+   "all": 0,
+   "all_except_selected": 1
+  },
+  "Song.Quantization": {
+   "q_2_bars": 3,
+   "q_4_bars": 2,
+   "q_8_bars": 1,
+   "q_bar": 4,
+   "q_eight": 9,
+   "q_eight_triplet": 10,
+   "q_half": 5,
+   "q_half_triplet": 6,
+   "q_no_q": 0,
+   "q_quarter": 7,
+   "q_quarter_triplet": 8,
+   "q_sixtenth": 11,
+   "q_sixtenth_triplet": 12,
+   "q_thirtytwoth": 13
+  },
+  "Song.RecordingQuantization": {
+   "rec_q_eight": 2,
+   "rec_q_eight_eight_triplet": 4,
+   "rec_q_eight_triplet": 3,
+   "rec_q_no_q": 0,
+   "rec_q_quarter": 1,
+   "rec_q_sixtenth": 5,
+   "rec_q_sixtenth_sixtenth_triplet": 7,
+   "rec_q_sixtenth_triplet": 6,
+   "rec_q_thirtysecond": 8
+  },
+  "Song.SessionRecordStatus": {
+   "off": 0,
+   "on": 1,
+   "transition": 2
+  },
+  "Song.TimeFormat": {
+   "ms_time": 0,
+   "smpte_24": 1,
+   "smpte_25": 2,
+   "smpte_29": 5,
+   "smpte_30": 3,
+   "smpte_30_drop": 4
+  },
+  "Track.DeviceInsertMode": {
+   "count": 3,
+   "default": 0,
+   "selected_left": 1,
+   "selected_right": 2
+  },
+  "Track.RoutingChannelLayout": {
+   "midi": 0,
+   "mono": 1,
+   "stereo": 2
+  },
+  "Track.RoutingTypeCategory": {
+   "external": 0,
+   "invalid": 7,
+   "master": 3,
+   "none": 6,
+   "parent_group_track": 5,
+   "resampling": 2,
+   "rewire": 1,
+   "track": 4
+  },
+  "Track.Track.monitoring_states": {
+   "AUTO": 1,
+   "IN": 0,
+   "OFF": 2
+  },
+  "WavetableDevice.EffectMode": {
+   "frequency_modulation": 1,
+   "none": 0,
+   "sync_and_pulse_width": 2,
+   "warp_and_fold": 3
+  },
+  "WavetableDevice.FilterRouting": {
+   "parallel": 1,
+   "serial": 0,
+   "split": 2
+  },
+  "WavetableDevice.ModulationSource": {
+   "amp_envelope": 0,
+   "envelope_2": 1,
+   "envelope_3": 2,
+   "lfo_1": 3,
+   "lfo_2": 4,
+   "midi_channel_pressure": 8,
+   "midi_mod_wheel": 9,
+   "midi_note": 6,
+   "midi_pitch_bend": 7,
+   "midi_random": 10,
+   "midi_velocity": 5
+  },
+  "WavetableDevice.UnisonMode": {
+   "classic": 1,
+   "fast_shimmer": 3,
+   "none": 0,
+   "phase_sync": 4,
+   "position_spread": 5,
+   "random_note": 6,
+   "slow_shimmer": 2
+  },
+  "WavetableDevice.VoiceCount": {
+   "eight": 6,
+   "five": 3,
+   "four": 2,
+   "seven": 5,
+   "six": 4,
+   "sixteen": 7,
+   "three": 1,
+   "two": 0
+  },
+  "WavetableDevice.Voicing": {
+   "mono": 0,
+   "poly": 1
+  }
+ },
+ "generated_at": "2026-08-02 23:21:41",
+ "live": {
+  "get_bugfix_version": 3,
+  "get_major_version": 12,
+  "get_minor_version": 4
+ }
+}

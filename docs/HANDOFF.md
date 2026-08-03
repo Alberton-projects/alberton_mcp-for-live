@@ -19,9 +19,13 @@ from inside Live (12.4.3, embedded Python 3.11.6) to `docs/lom-raw.json`, and
 `tools/render_inventory.py` renders `docs/lom-inventory.md` from it. Phase 1 produced
 `docs/CONTRACT.md`, frozen as 1.0 on 2026-08-02 after user review. Phase 2 was
 completed 2026-08-03: the bridge (`remote_script/Alberton/`, v0.1.1) passes all 34
-checks of the contract probe (`tools/wire_probe.py`) against a live instance —
-including atomic batch rollback and subscription change events. The next action is
-Phase 3 (the MCP server). The user works on macOS with Ableton Live 12.4.3 Suite and has
+checks of the contract probe (`tools/wire_probe.py`) against a live instance. Phase 3
+was completed the same night: `server/` (package `alberton-mcp`, `mcp<2` pinned) serves
+the full Layer B catalogue — 39 tools — with 25 unit tests against an in-process fake
+bridge and a 14-check end-to-end run (`tools/live_verify.py`) against real Live, both
+green. Remaining for v1.1, recorded in CONTRACT's out-of-scope list: audio clip import,
+Arrangement-native writing, automation-envelope writing, smarter browser-cache
+invalidation. The publishing decision (§4) is still open, deliberately. The user works on macOS with Ableton Live 12.4.3 Suite and has
 the existing `ableton-mcp` 1.2.0 installed and working, which is useful as a reference
 implementation and as a fallback while this project is incomplete.
 
@@ -221,6 +225,15 @@ float64 bit-exactly — verified with 1/3 triplet floats. **[verified 2026-08-03
 see that step in the undo history; one tick later it does. Batch rollback must
 therefore be deferred to the next tick — the bridge does this and only then sends the
 batch response. **[verified 2026-08-03 — this bit us]**
+
+Track/clip colors snap to Live's palette on write (`#FF8800` reads back `#F66C03`).
+Tools must treat the read-back as canonical. **[verified 2026-08-03]**
+
+`DeviceParameter.display_value` is numeric in the parameter's *display units*, both to
+read and to write — despite the docstring suggesting a string. Writing `-6.0` to a
+volume parameter sets the fader to −6 dB (normalized value read back 0.6999…). This is
+the clean route for dB-addressed mixing; the string rendering lives in
+`str_for_value`. **[verified 2026-08-03]**
 
 The user has an existing `ableton-mcp` install pinned to `mcp[cli]==1.28.1` in
 `claude_desktop_config.json`. Leave it working; this project should be developed alongside

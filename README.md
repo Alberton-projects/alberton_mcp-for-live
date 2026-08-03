@@ -3,8 +3,19 @@
 An [MCP](https://modelcontextprotocol.io) server plus a companion Ableton Live Remote
 Script that let an LLM read and write a Live set through the Live Object Model (LOM).
 
-> **Status: pre-alpha.** Nothing usable yet. Currently in Phase 0 (LOM introspection).
-> See [docs/HANDOFF.md](docs/HANDOFF.md) for the project plan and reasoning.
+> **Status: working v0.1** (2026-08-03). Inventory, contract 1.0, bridge and server are
+> done and verified: the bridge passes a 34-check wire probe and the server passes 25
+> unit tests plus a 14-check end-to-end run against a live Ableton instance. Not yet
+> packaged for third parties. Plan and findings: [docs/HANDOFF.md](docs/HANDOFF.md).
+
+## Quick start
+
+1. Install the Remote Script and select it in Live —
+   [remote_script/Alberton/README.md](remote_script/Alberton/README.md).
+2. Point your MCP client at the server —
+   [server/README.md](server/README.md) has the Claude Desktop snippet.
+3. Sanity checks, with Live open: `python3 tools/wire_probe.py` (bridge) and
+   `python3 tools/live_verify.py` (server, end to end).
 
 ## Architecture
 
