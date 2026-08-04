@@ -21,6 +21,12 @@ BATCH_CHUNK = 250          # wire batches are capped at 256 ops (CONTRACT A.9)
 # ~50 KB of JSON nobody asked for. Above this many slots, `standard` says so
 # and leaves the map to get_track. Measured on a real set, 2026-08-03.
 CLIP_MAP_LIMIT = 600
+# get_track(detail='full') reads seven properties of every parameter of every
+# device on the track. Measured on a real set 2026-08-04: ~20 tokens and ~5 ms
+# per parameter, so a 104-parameter track costs +2 100 tokens and +0.5 s over
+# 'standard'. Above this many the answer falls back to bare names and says so,
+# the same bargain as the clip map. The busiest track in that set held 244.
+PARAM_DETAIL_LIMIT = 400
 BROWSER_MAX_ITEMS = 4000   # per category
 BROWSER_MAX_DEPTH = 8
 BROWSE_RESULT_LIMIT = 25
@@ -358,15 +364,65 @@ async def get_track(session, track, detail="standard"):
                          "playing": values.get("is_playing")}
     out["clips"] = clips
     if detail == "full":
-        parameter_values = []
-        for device_index, device in enumerate(out["devices"]):
-            count = device["parameter_count"]
-            names = await _gets(bridge, [
-                (ref["path"] + ".devices.%d.parameters.%d" % (device_index, i),
-                 ["name"]) for i in range(count)])
-            device["parameters"] = [(v or {}).get("name") for v in names]
-        del parameter_values
+        await _describe_parameters(bridge, ref["path"], out["devices"])
     return out
+
+
+# What a caller needs before it can set a parameter: where the value may go,
+# where it is now, and what that reads as in Live's own units.
+PARAM_PROPS = ["name", "value", "min", "max", "is_quantized",
+               "display_value", "is_enabled"]
+
+
+async def _describe_parameters(bridge, track_path, devices):
+    """Fill in each device's `parameters` — one batched read for the track.
+
+    `value_items` is deliberately not fetched: it raises on a parameter that is
+    not quantized, and the bridge returns a vector as a stub anyway, so the
+    names behind an enum still cost a `lom_get` on `<param>.value_items`.
+    """
+    total = sum(d["parameter_count"] for d in devices)
+    if total > PARAM_DETAIL_LIMIT:
+        props, terse = ["name"], True
+    else:
+        props, terse = PARAM_PROPS, False
+
+    specs, owners = [], []
+    for device_index, device in enumerate(devices):
+        for i in range(device["parameter_count"]):
+            specs.append(("%s.devices.%d.parameters.%d"
+                          % (track_path, device_index, i), props))
+            owners.append(device)
+    values = await _gets(bridge, specs)
+
+    for device in devices:
+        device["parameters"] = []
+    for device, v in zip(owners, values):
+        v = v or {}
+        if terse:
+            device["parameters"].append(v.get("name"))
+            continue
+        entry = {"name": v.get("name"), "value": v.get("value"),
+                 "min": v.get("min"), "max": v.get("max")}
+        display = v.get("display_value")
+        if display is not None and display != v.get("value"):
+            entry["display"] = display
+        if v.get("is_quantized"):
+            # A stepped parameter: only certain values stick, and for an enum
+            # `display` is the name of the step it is on.
+            entry["quantized"] = True
+        if v.get("is_enabled") is False:
+            # Macro-mapped, or switched off by Max: writing it will not take.
+            entry["enabled"] = False
+        device["parameters"].append(entry)
+
+    if terse:
+        devices_note = ("%d parameters on this track; only names are listed. "
+                        "Read one with lom_get on "
+                        "'<track>.devices.<i>.parameters.<j>' for its range."
+                        % total)
+        for device in devices:
+            device["parameters_note"] = devices_note
 
 
 PITCH_NAMES = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")

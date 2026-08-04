@@ -14,10 +14,14 @@ import json
 _next_ptr = [1000]
 
 
-def _param(name, value=0.0, lo=0.0, hi=1.0, display=0.0):
+def _param(name, value=0.0, lo=0.0, hi=1.0, display=0.0,
+           quantized=False, enabled=True):
+    # is_quantized and is_enabled are what a caller needs before writing: a
+    # stepped parameter snaps, and a macro-mapped one ignores the write.
     _next_ptr[0] += 1
     return {"__class__": "DeviceParameter", "name": name, "value": value,
             "min": lo, "max": hi, "display_value": display,
+            "is_quantized": quantized, "is_enabled": enabled,
             "_live_ptr": _next_ptr[0]}
 
 

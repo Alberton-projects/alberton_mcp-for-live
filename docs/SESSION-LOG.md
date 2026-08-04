@@ -27,11 +27,11 @@ in HANDOFF, the *spec* in CONTRACT.
 
 | Suite | Needs Live | Checks |
 |---|---|---|
-| `server/tests/` (pytest) | no | 110 |
+| `server/tests/` (pytest) | no | 114 |
 | `tools/wire_probe.py` | yes | 36 |
 | `tools/live_verify.py` | yes | 23 |
 | `tools/lifecycle_probe.py` | yes | 23 (+4 manual) |
-| `tools/functional_suite.py` | yes | 51, and **46/46 tools exercised** |
+| `tools/functional_suite.py` | yes | 53, and **46/46 tools exercised** |
 | `tools/degenerate_probe.py` | yes | 46 (group and frozen coverage runs when the set has them) |
 | `tools/limits_probe.py` | yes | 15 — batch, note and subscription ceilings, overflow |
 | `tools/stress_probe.py` | yes | measurement under concurrent human use |
@@ -75,10 +75,10 @@ Ordered by what a stranger would hit first.
    allowed connection; malformed input from the *model* side rather than the wire;
    material built by the tools then edited by hand and read back; and sets far larger
    than the 29-track one measured so far.
-2. **`get_track(detail='full')` should carry each parameter's range and current value.**
-   Today it returns names only, while `set_device_parameter`'s docstring points at it for
-   `[min, max]` — so choosing a legal value costs one `lom_get` per parameter. Found
-   2026-08-04 while driving a real Max for Live device; see HANDOFF §7.
+2. **`get_track` pays for the whole clip map on every call.** Measured 2026-08-04 on the
+   29-track / 181-scene set: `standard` on a track costs ~3 s and ~1 600 tokens, and
+   almost all of it is probing 181 Session slots — even when the caller wanted devices.
+   `session_overview` already scales its clip map to the set; `get_track` does not.
 3. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
    this last, once the README has stopped moving.
 

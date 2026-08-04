@@ -65,7 +65,14 @@ async def session_overview(detail: str = "standard") -> dict:
 @mcp.tool()
 async def get_track(track: Union[int, str], detail: str = "standard") -> dict:
     """One track in depth: mixer (volume/pan/sends with display strings),
-    devices, clips. detail 'full' adds each device's parameter names.
+    devices, clips.
+
+    detail 'full' adds every device parameter with what you need to set it:
+    name, current value, min, max, its reading in Live's own units, whether it
+    is stepped, and whether it is disabled (macro-mapped parameters cannot be
+    written). Above 400 parameters on one track it lists names only and says so.
+    An enum's step NAMES are not included — read <param>.value_items with
+    lom_get for those.
 
     A track locator is an index (regular tracks only), an exact name, or one
     of the explicit forms "master" and "return:0" / "return:A-Reverb".

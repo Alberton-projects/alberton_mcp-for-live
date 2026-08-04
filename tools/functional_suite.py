@@ -319,21 +319,26 @@ async def main():
         # ---------------------------------------------------------- automation
         run.section("AUTOMATION")
         track_full = await api.get_track(session, track=midi_index, detail="full")
-        params = track_full["devices"][0]["parameters"]
+        info = track_full["devices"][0]["parameters"]
+        # detail='full' has to answer this on its own: a caller cannot choose a
+        # legal value without the range, and this suite used to ask Live once
+        # per parameter to find out.
+        run.check("get_track(detail='full') carries value and range",
+                  info and all(isinstance(p, dict) and p.get("name")
+                               and p.get("value") is not None
+                               and p.get("min") is not None
+                               and p.get("max") is not None for p in info),
+                  json.dumps(info)[:300], tools=["get_track"])
+        run.check("get_track(detail='full') marks the stepped parameters",
+                  any(p.get("quantized") for p in info),
+                  json.dumps([p["name"] for p in info if p.get("quantized")]),
+                  tools=["get_track"])
         # A continuous parameter: quantized ones (Operator's Algorithm, 0-10
         # integers) snap, so a smooth ramp cannot read back exactly.
-        info = []
-        for index in range(len(params)):
-            values = await api.lom_get(
-                session,
-                path="song.tracks.%d.devices.0.parameters.%d" % (midi_index,
-                                                                 index),
-                props=["name", "is_quantized"])
-            info.append(values["values"])
         sweepable = next((p["name"] for p in info
-                          if p["name"] != "Device On" and not p["is_quantized"]),
+                          if p["name"] != "Device On" and not p.get("quantized")),
                          None)
-        quantized = next((p["name"] for p in info if p["is_quantized"]
+        quantized = next((p["name"] for p in info if p.get("quantized")
                           and p["name"] != "Device On"), None)
         if sweepable:
             ramp = await api.automate_parameter(
