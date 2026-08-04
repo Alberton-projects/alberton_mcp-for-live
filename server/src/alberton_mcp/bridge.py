@@ -17,6 +17,7 @@ CONTRACT_MAJOR = "1"
 LINE_LIMIT = 16 * 1024 * 1024 + 1024
 REQUEST_TIMEOUT = 15.0
 FEED_MAXLEN = 10000
+INF = float("inf")
 
 
 class WireError(Exception):
@@ -35,6 +36,20 @@ class WireError(Exception):
 
 class BridgeUnreachable(Exception):
     """Transport-level failure: cannot reach or lost the bridge."""
+
+
+def _nonfinite(value, path="", found=None):
+    """Where the NaNs and infinities are, so the error can name them."""
+    found = [] if found is None else found
+    if isinstance(value, float) and (value != value or value in (INF, -INF)):
+        found.append(path or "value")
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            _nonfinite(item, "%s.%s" % (path, key) if path else str(key), found)
+    elif isinstance(value, (list, tuple)):
+        for i, item in enumerate(value):
+            _nonfinite(item, "%s[%d]" % (path, i), found)
+    return found[:6]
 
 
 class ChangeFeed:
@@ -115,14 +130,30 @@ class Bridge:
     async def request(self, op, timeout=REQUEST_TIMEOUT, **params):
         await self._ensure_connected()
         request_id = self._next_id
+        frame = {"id": request_id, "op": op}
+        frame.update(params)
+        # JSON has no NaN and no Infinity. Python writes them as bare words
+        # anyway, which is not JSON, and Live does not survive being handed
+        # one: the bridge's main-thread pump stops answering and nothing short
+        # of reloading the Control Surface revives it. Refuse here, the one
+        # place every path goes through — tools, lom_set, the inner calls of a
+        # batch — and refuse before any state is registered for this request.
+        # Cost of learning this: a wedged Live. 2026-08-04.
+        try:
+            line = json.dumps(frame, separators=(",", ":"),
+                              allow_nan=False) + "\n"
+        except ValueError:
+            raise WireError({
+                "code": "invalid_argument",
+                "message": "%s cannot be sent: %s is not a number JSON can "
+                           "carry" % (op, ", ".join(_nonfinite(frame)) or "a value"),
+                "hint": "NaN and infinity have no JSON form. Send a real "
+                        "number, or leave the property out."})
         self._next_id += 1
         future = asyncio.get_running_loop().create_future()
         self._pending[request_id] = future
-        frame = {"id": request_id, "op": op}
-        frame.update(params)
         try:
-            self._writer.write((json.dumps(frame, separators=(",", ":"))
-                                + "\n").encode("utf-8"))
+            self._writer.write(line.encode("utf-8"))
             await self._writer.drain()
         except Exception as exc:
             self._pending.pop(request_id, None)

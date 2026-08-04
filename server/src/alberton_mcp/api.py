@@ -9,6 +9,7 @@ boundary and integer RGB on the wire.
 """
 
 import asyncio
+import math
 import time as _time
 
 from . import colors, files, inventory, resolve
@@ -136,6 +137,13 @@ async def _run_atomic(bridge, ops, what):
 def _require_number(value, name, lo=None, hi=None):
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ToolError("invalid_argument", "%s must be a number" % name)
+    # Every comparison with NaN is False, so a range check waves it straight
+    # through — which is how one reached Live and stopped the bridge dead.
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ToolError("invalid_argument",
+                        "%s=%r is not a finite number" % (name, value),
+                        hint="NaN and infinity have no JSON form; Live cannot "
+                             "be given one. Send a real number.")
     if lo is not None and value < lo or hi is not None and value > hi:
         raise ToolError("invalid_argument",
                         "%s=%r out of range [%s, %s]" % (name, value, lo, hi))

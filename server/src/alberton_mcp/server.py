@@ -41,6 +41,11 @@ async def _run(fn, **kwargs):
             value = getattr(exc, key)
             if value:
                 error[key] = value
+        # The hint is the half that tells the caller what to do instead; it was
+        # being dropped on the floor for every wire-level failure.
+        hint = (exc.raw or {}).get("hint")
+        if hint:
+            error["hint"] = hint
         return {"error": error}
     except BridgeUnreachable as exc:
         return {"error": {
