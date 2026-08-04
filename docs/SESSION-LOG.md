@@ -13,17 +13,20 @@ in HANDOFF, the *spec* in CONTRACT.
 
 ---
 
-## Current state — 2026-08-03
+## Current state — 2026-08-04
 
 | | |
 |---|---|
 | Contract | 1.1 (additive; major version is what must match) |
 | Remote Script | `remote_script/Alberton_MCP/`, v0.2.1 |
 | Server | `server/`, package `alberton-mcp` 0.1.0, 46 tools, `mcp<2` pinned |
-| Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 — and the README now says so, promising nothing more |
+| Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 — and the README says so, promising nothing more |
+| Open work | One item: the clean-install rehearsal. Everything else decided has been built. |
 | Published | No. Publication is deliberately the last step. |
 
-**Tests, all green:**
+**Tests, all green.** Everything needing Live was last run 2026-08-04 against the loaded
+29-track / 181-scene *Alberton Multiverse*, except `malformed_probe`, which is green
+against both that and an empty set.
 
 | Suite | Needs Live | Checks |
 |---|---|---|
@@ -63,7 +66,28 @@ Learned by getting it wrong; none of it is obvious from the code.
 - **The test set is `proves MCP-1`**: 6 tracks (Bass, Drums, Structure, Pad, two audio),
   100 BPM, 7/4, E minor, built in the first musical session. The Bass track carries a
   `Bass Raw` rack whose chain holds an Operator — the only nested-device material
-  available, and what the rack-path tests use.
+  available, and what the rack-path tests use. The larger measurements come from the
+  user's own *Alberton Multiverse*: 29 tracks, 181 scenes, 368 clips.
+
+- **Measure before fixing. On this project the stated cause has usually been wrong.**
+  Four of the five repairs made on 2026-08-04 began with a diagnosis of mine that did not
+  survive a measurement:
+
+  | What the open item said | What was true |
+  |---|---|
+  | The bridge should survive a bad op | It cannot — Live's own thread hung inside the call, and the tick handler already caught everything. The guard had to move to the parser |
+  | An id-less error makes the caller wait out 15 s | `_drop_connection` already fails in-flight requests; what was lost was the *reason* |
+  | `get_track` pays for the whole clip map | The clip map was 0.8 s of 3.2 s. The rest was eight sequential awaits |
+  | The Kit Selector never stores the Resample FX | `autopattr @greedy` did store it; the recalled value never reached the script — and the fix first proposed would have orphaned saved data |
+
+  The measurement is usually five minutes and it has changed the fix every time. A
+  round trip to Live costs ~0.40 s **whatever it carries**, so when something is slow,
+  count the awaits before optimising the payload.
+
+- **A new probe fails against itself first.** `malformed_probe` reported eight failures on
+  its first clean run; six were its own — it built calls outside its `try`, and it knew
+  only the Layer B error codes, not the closed wire set in CONTRACT A.7. Read a new
+  probe's failures as claims about the probe until proven otherwise.
 
 ## Open — decided but not built
 
