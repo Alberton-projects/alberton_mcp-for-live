@@ -27,11 +27,12 @@ in HANDOFF, the *spec* in CONTRACT.
 
 | Suite | Needs Live | Checks |
 |---|---|---|
-| `server/tests/` (pytest) | no | 114 |
+| `server/tests/` (pytest) | no | 124 |
 | `tools/wire_probe.py` | yes | 36 |
 | `tools/live_verify.py` | yes | 23 |
 | `tools/lifecycle_probe.py` | yes | 23 (+4 manual) |
 | `tools/functional_suite.py` | yes | 53, and **46/46 tools exercised** |
+| `tools/malformed_probe.py` | yes | 45 — calls shaped the way a *model* gets them wrong |
 | `tools/degenerate_probe.py` | yes | 46 (group and frozen coverage runs when the set has them) |
 | `tools/limits_probe.py` | yes | 15 — batch, note and subscription ceilings, overflow |
 | `tools/stress_probe.py` | yes | measurement under concurrent human use |
@@ -68,18 +69,19 @@ Learned by getting it wrong; none of it is obvious from the code.
 
 Ordered by what a stranger would hit first.
 
-1. **More testing, scope undecided.** The user judged 2026-08-03 that the suites so far
-   are not enough, without saying which axis to push. Candidates not yet touched, in
-   rough order of what a stranger would hit: a long soak (hours, not minutes); repeated
-   runs to prove the suites are idempotent; several MCP clients competing for the one
-   allowed connection; malformed input from the *model* side rather than the wire;
-   material built by the tools then edited by hand and read back; and sets far larger
-   than the 29-track one measured so far.
-2. **`get_track` pays for the whole clip map on every call.** Measured 2026-08-04 on the
+1. **The bridge should survive a bad op.** The server now refuses to send a non-finite
+   number, so our client cannot wedge Live again — but the bridge itself still has no
+   defence, and a different client, or a frame we have not thought of, could stop the
+   main-thread pump the same way. Nothing was logged when it happened: no traceback, in
+   our log or Live's. Whatever swallowed that exception is worth finding before anyone
+   else runs a client against this. A Remote Script change, so it costs a restart.
+2. **Re-run `malformed_probe.py` from end to end.** It wedged Live part-way through on
+   its first run and the sections after the non-finite ones have never executed.
+3. **`get_track` pays for the whole clip map on every call.** Measured 2026-08-04 on the
    29-track / 181-scene set: `standard` on a track costs ~3 s and ~1 600 tokens, and
    almost all of it is probing 181 Session slots — even when the caller wanted devices.
    `session_overview` already scales its clip map to the set; `get_track` does not.
-3. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
+4. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
    this last, once the README has stopped moving.
 
 Everything else on this list is done. Testing found, in order: the stringified-locator
@@ -100,6 +102,18 @@ written to a frozen track. None of them were predicted.
 ---
 
 ## Log
+
+### 2026-08-04 — a number that is not a number
+
+- `3043d66` **The malformed-call probe found a wedge on its first run.** `tempo=NaN` stops
+  the bridge permanently: no crash, no traceback, socket still open, main-thread pump
+  never answers again. Live had to be force-quit. Two guards now — `_require_number`
+  rejects non-finite floats (every comparison with NaN is False, so NaN passed every
+  range check in the server), and `bridge.request` refuses to serialise a frame carrying
+  one, which covers `lom_set`, parameter values and batch innards where no range check
+  exists. `_run` was also dropping the `hint` from every wire error. The probe itself ran
+  against the working set and restored the tempo only at the end; it now health-checks
+  after each dangerous write and aborts the moment the bridge goes quiet.
 
 ### 2026-08-04 — what a caller needs before it writes
 
