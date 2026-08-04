@@ -18,7 +18,7 @@ in HANDOFF, the *spec* in CONTRACT.
 | | |
 |---|---|
 | Contract | 1.1 (additive; major version is what must match) |
-| Remote Script | `remote_script/Alberton_MCP/`, v0.2.0 |
+| Remote Script | `remote_script/Alberton_MCP/`, v0.2.1 |
 | Server | `server/`, package `alberton-mcp` 0.1.0, 46 tools, `mcp<2` pinned |
 | Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 — and the README now says so, promising nothing more |
 | Published | No. Publication is deliberately the last step. |
@@ -69,12 +69,11 @@ Learned by getting it wrong; none of it is obvious from the code.
 
 Ordered by what a stranger would hit first.
 
-1. **The bridge should survive a bad op.** The server now refuses to send a non-finite
-   number, so our client cannot wedge Live again — but the bridge itself still has no
-   defence, and a different client, or a frame we have not thought of, could stop the
-   main-thread pump the same way. Nothing was logged when it happened: no traceback, in
-   our log or Live's. Whatever swallowed that exception is worth finding before anyone
-   else runs a client against this. A Remote Script change, so it costs a restart.
+1. **An unparseable line is answered with `id: null`, which no client can correlate.**
+   Unavoidable — the id is inside the line that would not parse — but our own client
+   silently drops an id-less error frame and then waits out the full 15 s timeout. It
+   cannot happen to us (we never send one), but a third-party client would see a hang
+   where there was an immediate answer. Logging it, at least, would help.
 2. **Run `malformed_probe.py` against a loaded set.** It is green end to end (59/59) but
    only against an empty one; the locator checks have never faced 29 tracks, groups and
    returns.
@@ -103,6 +102,21 @@ written to a frozen track. None of them were predicted.
 ---
 
 ## Log
+
+### 2026-08-04 — bridge 0.2.1, and a diagnosis that was wrong
+
+- `14b93fb` **"The bridge should survive a bad op" was not achievable, and the reason is
+  the finding.** The tick handler already catches and logs everything, and nothing was
+  logged — because nothing was raised. Live's main thread went into `song.tempo = nan`
+  and never came out. No Python `try` rescues a call into Live that does not return, so
+  the guard moved to the earliest possible point: `json.loads` accepts bare `NaN` and
+  `Infinity`, and `parse_constant` makes it refuse them. The frame never exists and the
+  refusal falls into the `bad_request` path that was already there — one argument, no new
+  code path. Matters for publication rather than for us: the server has refused these
+  since `3043d66`, but the bridge is a public socket, and until now any third-party client
+  could stop a stranger's Live with a division that went wrong. Verified by sending the
+  exact killing frame raw, past both server guards: refused in 0.4 s, next request
+  answered normally.
 
 ### 2026-08-04 — an unknown enum was quietly the default
 
