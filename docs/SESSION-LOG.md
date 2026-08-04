@@ -27,7 +27,7 @@ in HANDOFF, the *spec* in CONTRACT.
 
 | Suite | Needs Live | Checks |
 |---|---|---|
-| `server/tests/` (pytest) | no | 124 |
+| `server/tests/` (pytest) | no | 129 |
 | `tools/wire_probe.py` | yes | 36 |
 | `tools/live_verify.py` | yes | 23 |
 | `tools/lifecycle_probe.py` | yes | 23 (+4 manual) |
@@ -69,19 +69,11 @@ Learned by getting it wrong; none of it is obvious from the code.
 
 Ordered by what a stranger would hit first.
 
-1. **An unparseable line is answered with `id: null`, which no client can correlate.**
-   Unavoidable — the id is inside the line that would not parse — but our own client
-   silently drops an id-less error frame and then waits out the full 15 s timeout. It
-   cannot happen to us (we never send one), but a third-party client would see a hang
-   where there was an immediate answer. Logging it, at least, would help.
-2. **Run `malformed_probe.py` against a loaded set.** It is green end to end (59/59) but
-   only against an empty one; the locator checks have never faced 29 tracks, groups and
-   returns.
-3. **`get_track` pays for the whole clip map on every call.** Measured 2026-08-04 on the
+1. **`get_track` pays for the whole clip map on every call.** Measured 2026-08-04 on the
    29-track / 181-scene set: `standard` on a track costs ~3 s and ~1 600 tokens, and
    almost all of it is probing 181 Session slots — even when the caller wanted devices.
    `session_overview` already scales its clip map to the set; `get_track` does not.
-4. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
+2. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
    this last, once the README has stopped moving.
 
 Everything else on this list is done. Testing found, in order: the stringified-locator
@@ -102,6 +94,20 @@ written to a frozen track. None of them were predicted.
 ---
 
 ## Log
+
+### 2026-08-04 — an error with no id to pin it on
+
+- `e54367a` **The bridge answers `too_large` with `id: null` and hangs up**, because the
+  line it refused never parsed far enough to have an id. In-flight requests already
+  failed fast — `_drop_connection` sees to that — but the *reason* was thrown away, so a
+  caller who asked for more than 16 MiB was told "connection to the bridge lost" and
+  would have gone looking for a crashed Live. The client now measures the line and
+  refuses an oversized one itself, naming the size, so the bridge is never provoked and
+  the error lands on the request that caused it; an id-less refusal that arrives anyway
+  is kept, and the drop carries the bridge's own words.
+- **`malformed_probe.py` is green against a loaded set too** — 59/59 on the 29-track
+  *Alberton Multiverse*, after its health check was reduced from a full
+  `session_overview` to one op.
 
 ### 2026-08-04 — bridge 0.2.1, and a diagnosis that was wrong
 
