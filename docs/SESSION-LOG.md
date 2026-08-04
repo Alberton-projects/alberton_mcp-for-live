@@ -32,7 +32,7 @@ in HANDOFF, the *spec* in CONTRACT.
 | `tools/live_verify.py` | yes | 23 |
 | `tools/lifecycle_probe.py` | yes | 23 (+4 manual) |
 | `tools/functional_suite.py` | yes | 53, and **46/46 tools exercised** |
-| `tools/malformed_probe.py` | yes | 45 — calls shaped the way a *model* gets them wrong |
+| `tools/malformed_probe.py` | yes | 59 — calls shaped the way a *model* gets them wrong |
 | `tools/degenerate_probe.py` | yes | 46 (group and frozen coverage runs when the set has them) |
 | `tools/limits_probe.py` | yes | 15 — batch, note and subscription ceilings, overflow |
 | `tools/stress_probe.py` | yes | measurement under concurrent human use |
@@ -75,8 +75,9 @@ Ordered by what a stranger would hit first.
    main-thread pump the same way. Nothing was logged when it happened: no traceback, in
    our log or Live's. Whatever swallowed that exception is worth finding before anyone
    else runs a client against this. A Remote Script change, so it costs a restart.
-2. **Re-run `malformed_probe.py` from end to end.** It wedged Live part-way through on
-   its first run and the sections after the non-finite ones have never executed.
+2. **Run `malformed_probe.py` against a loaded set.** It is green end to end (59/59) but
+   only against an empty one; the locator checks have never faced 29 tracks, groups and
+   returns.
 3. **`get_track` pays for the whole clip map on every call.** Measured 2026-08-04 on the
    29-track / 181-scene set: `standard` on a track costs ~3 s and ~1 600 tokens, and
    almost all of it is probing 181 Session slots — even when the caller wanted devices.
@@ -102,6 +103,17 @@ written to a frozen track. None of them were predicted.
 ---
 
 ## Log
+
+### 2026-08-04 — an unknown enum was quietly the default
+
+- `14c3f2c` **`detail='verbose'` was accepted and answered as `standard`.** Same for
+  `session_overview(detail='everything')` and for `automate_parameter`'s `mode`, where
+  anything that was not `hold` silently became `ramp`. A caller cannot tell it is
+  reasoning on less than it asked for — the failure the structured-error rule exists to
+  prevent. `_require_choice` refuses and lists the real values, the idiom
+  `refresh_browser_index` already had. The probe's other six failures were its own: it
+  knew only the Layer B codes, so every `WireError` looked like a bare exception.
+  **59 checks, 0 failed** — against an empty set.
 
 ### 2026-08-04 — a number that is not a number
 
