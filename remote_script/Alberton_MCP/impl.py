@@ -29,7 +29,7 @@ HOST = "127.0.0.1"
 PORT = 17853
 
 CONTRACT_VERSION = "1.1"
-SCRIPT_VERSION = "0.2.0"
+SCRIPT_VERSION = "0.2.1"
 
 LINE_MAX = 16 * 1024 * 1024
 BATCH_MAX = 256
@@ -96,6 +96,17 @@ class ProtocolError(Exception):
 
 
 # --- value encoding / decoding (CONTRACT A.4) --------------------------------
+
+
+def _reject_constant(name):
+    """json.loads accepts bare NaN and Infinity. They are not JSON, and Live
+    does not survive being handed one: setting a tempo to NaN stopped the main
+    thread dead — no exception for the tick handler to catch, no traceback
+    anywhere, Live spinning at 89% CPU until it was force-quit. Nothing inside
+    Python can rescue a call into Live that never returns, so the only defence
+    is never to make it. Refuse at the parser, before the frame exists.
+    Verified the hard way, 2026-08-04."""
+    raise ValueError("%s is not a number JSON can carry" % name)
 
 
 def _is_lom_object(value):
@@ -248,7 +259,8 @@ class Bridge(object):
                     alive[0] = False
                     break
                 try:
-                    frame = json.loads(line.decode("utf-8"))
+                    frame = json.loads(line.decode("utf-8"),
+                                       parse_constant=_reject_constant)
                 except Exception as exc:
                     self._send(client, {"id": None, "ok": False, "error": {
                         "code": "bad_request",

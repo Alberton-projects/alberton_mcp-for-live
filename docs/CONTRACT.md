@@ -191,6 +191,12 @@ Event semantics (backpressure by design):
 {"code": "property_read_only", "message": "Clip.length is read-only", "path": "song.tracks.0.clip_slots.0.clip", "prop": "length"}
 ```
 
+A frame carrying `NaN`, `Infinity` or `-Infinity` is refused as `bad_request`
+at parse time, before the frame exists. They are not JSON — Python's own decoder
+accepts them, which is why this has to be said — and handing one to Live stops
+its main thread outright, with no exception for the script to catch. Since the
+line never parses, the refusal carries `"id": null`.
+
 Closed code set (v1): `bad_request`, `unknown_op`, `path_not_found`,
 `property_not_found`, `property_read_only`, `method_not_found`, `type_error`,
 `not_a_midi_clip`, `live_error` (C++ exception surfaced; `message` carries its text),
