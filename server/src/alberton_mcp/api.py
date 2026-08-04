@@ -328,8 +328,20 @@ async def get_track(session, track, detail="standard"):
     _require_choice(detail, "detail", ("standard", "full"))
     bridge = session.bridge
     ref = await resolve.resolve_track(bridge, track)
-    described = await bridge.request("describe", path=ref["path"])
-    p = described["props"]
+    mixer = ref["path"] + ".mixer_device"
+    # Both describes in one batch: the track's tells us how many devices and
+    # slots there are, the mixer's how many sends, and everything after needs
+    # all three counts. A round trip costs a bridge tick whatever it carries,
+    # so what matters is how many times we wait, not how much we ask for.
+    described = await bridge.request("batch", stop_on_error=False, ops=[
+        {"op": "describe", "path": ref["path"]},
+        {"op": "describe", "path": mixer}])
+    head, mixer_head = described["results"][0], described["results"][1]
+    if not head.get("ok"):
+        raise ToolError("not_found", "cannot read %s" % ref["path"])
+    p = head["result"]["props"]
+    send_count = _vec_length(
+        (mixer_head["result"]["props"] if mixer_head.get("ok") else {}).get("sends"))
     out = {"index": ref["index"], "kind": ref["kind"], "path": ref["path"],
            "name": _scalar(p.get("name")),
            "color": colors.to_hex(_scalar(p.get("color"))),
@@ -339,17 +351,37 @@ async def get_track(session, track, detail="standard"):
            "arm": _scalar(p.get("arm")),
            "frozen": _scalar(p.get("is_frozen")),
            "can_be_armed": _scalar(p.get("can_be_armed"))}
-    mixer = ref["path"] + ".mixer_device"
-    send_count = 0
-    mixer_specs = [(mixer + ".volume", ["value", "display_value", "min", "max"]),
-                   (mixer + ".panning", ["value", "display_value"])]
-    sends_len = await _gets(bridge, [(mixer, ["sends"])])
-    if sends_len and sends_len[0]:
-        send_count = _vec_length(sends_len[0].get("sends"))
-    mixer_specs += [(mixer + ".sends.%d" % i, ["name", "value", "display_value"])
-                    for i in range(send_count)]
-    mixer_values = await _gets(bridge, mixer_specs)
-    volume, panning = mixer_values[0] or {}, mixer_values[1] or {}
+    # And now everything else, in a single second round trip. The clip slots
+    # are read blind — asking an empty slot for its clip simply fails and comes
+    # back None — which is both cheaper than probing has_clip first and, more
+    # to the point, removes the last thing that needed an answer before it
+    # could be asked. Measured on a 181-slot track: identical clips found.
+    device_count = _vec_length(p.get("devices"))
+    slot_count = _vec_length(p.get("clip_slots"))
+    specs = ([(mixer + ".volume", ["value", "display_value", "min", "max"]),
+              (mixer + ".panning", ["value", "display_value"])]
+             + [(mixer + ".sends.%d" % i, ["name", "value", "display_value"])
+                for i in range(send_count)]
+             + [(ref["path"] + ".devices.%d" % i,
+                 ["name", "class_name", "parameters"])
+                for i in range(device_count)]
+             + [(ref["path"] + ".clip_slots.%d.clip" % s,
+                 ["name", "color", "length", "is_playing"])
+                for s in range(slot_count)])
+    got = await _gets(bridge, specs)
+    volume, panning = got[0] or {}, got[1] or {}
+    at = 2
+    send_values = got[at:at + send_count]; at += send_count
+    device_values = got[at:at + device_count]; at += device_count
+    clip_rows = got[at:]
+
+    out["devices"] = [{"index": i, "name": (v or {}).get("name"),
+                       "class": (v or {}).get("class_name"),
+                       "parameter_count": _vec_length((v or {}).get("parameters"))}
+                      for i, v in enumerate(device_values)]
+    with_clip = [s for s, v in enumerate(clip_rows) if v]
+    clip_values = [clip_rows[s] for s in with_clip]
+
     out["mixer"] = {
         "volume": {"value": volume.get("value"),
                    "display": volume.get("display_value")},
@@ -358,26 +390,9 @@ async def get_track(session, track, detail="standard"):
         "sends": [{"index": i, "name": (v or {}).get("name"),
                    "value": (v or {}).get("value"),
                    "display": (v or {}).get("display_value")}
-                  for i, v in enumerate(mixer_values[2:])],
+                  for i, v in enumerate(send_values)],
     }
-    device_count = _vec_length(p.get("devices"))
-    device_values = await _gets(bridge, [(ref["path"] + ".devices.%d" % i,
-                                          ["name", "class_name", "parameters"])
-                                         for i in range(device_count)])
-    out["devices"] = [{"index": i, "name": (v or {}).get("name"),
-                       "class": (v or {}).get("class_name"),
-                       "parameter_count": _vec_length((v or {}).get("parameters"))}
-                      for i, v in enumerate(device_values)]
-    slot_count = _vec_length(p.get("clip_slots"))
-    slot_values = await _gets(bridge, [(ref["path"] + ".clip_slots.%d" % s,
-                                        ["has_clip"]) for s in range(slot_count)])
     clips = {}
-    with_clip = [s for s, v in enumerate(slot_values)
-                 if v and v.get("has_clip") is True]
-    clip_values = await _gets(bridge,
-                              [(ref["path"] + ".clip_slots.%d.clip" % s,
-                                ["name", "color", "length", "is_playing"])
-                               for s in with_clip])
     for s, values in zip(with_clip, clip_values):
         values = values or {}
         clips[str(s)] = {"name": values.get("name"),
