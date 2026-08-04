@@ -150,6 +150,18 @@ def _require_number(value, name, lo=None, hi=None):
     return float(value)
 
 
+def _require_choice(value, name, choices):
+    """An unknown enum value must be refused, not quietly treated as default.
+
+    A caller that asks for detail='verbose' and silently receives 'standard'
+    has no way to know it is reasoning on less than it asked for.
+    """
+    if value not in choices:
+        raise ToolError("invalid_argument", "unknown %s %r" % (name, value),
+                        hint="one of: %s" % ", ".join(sorted(choices)))
+    return value
+
+
 def _validate_notes(notes, what):
     if not isinstance(notes, list):
         raise ToolError("invalid_argument", "%s must be a list of notes" % what)
@@ -218,6 +230,7 @@ async def session_overview(session, detail="standard"):
                       for v in track_values)
     # `full` always pays; `standard` only when the set is small enough that
     # the map is worth its round trips and its bytes.
+    _require_choice(detail, "detail", ("minimal", "standard", "full"))
     want_clip_map = detail == "full" or (detail != "minimal"
                                          and slot_probes <= CLIP_MAP_LIMIT)
     tracks = []
@@ -312,6 +325,7 @@ async def session_overview(session, detail="standard"):
 
 
 async def get_track(session, track, detail="standard"):
+    _require_choice(detail, "detail", ("standard", "full"))
     bridge = session.bridge
     ref = await resolve.resolve_track(bridge, track)
     described = await bridge.request("describe", path=ref["path"])
@@ -1487,6 +1501,7 @@ def _render_steps(points, resolution, mode, lo, hi):
     def clamp(value):
         return max(lo, min(hi, float(value)))
 
+    _require_choice(mode, "mode", ("ramp", "hold"))
     steps = []
     if mode == "hold":
         for index, point in enumerate(points):

@@ -39,13 +39,22 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "server" / "src"))
 
 from alberton_mcp import api                      # noqa: E402
-from alberton_mcp.bridge import Bridge            # noqa: E402
+from alberton_mcp.bridge import Bridge, WireError  # noqa: E402
 from alberton_mcp.errors import ToolError         # noqa: E402
 
 SCRATCH = "ZZ malformed"
 
-KNOWN_CODES = ("invalid_argument", "not_found", "type_error", "live_error",
-               "conflict", "too_large", "unsupported")
+# CONTRACT: Layer A has a closed set (§A.7), Layer B its own (§B). A probe
+# calling Layer B directly sees both — WireError comes straight up from the
+# wire for anything the bridge refuses.
+WIRE_CODES = ("bad_request", "unknown_op", "path_not_found",
+              "property_not_found", "property_read_only", "method_not_found",
+              "type_error", "not_a_midi_clip", "live_error",
+              "unsupported_in_batch", "subscription_not_found",
+              "not_listenable", "too_large", "internal")
+TOOL_CODES = ("invalid_argument", "not_found", "type_error", "live_error",
+              "conflict", "too_large", "unsupported")
+KNOWN_CODES = WIRE_CODES + TOOL_CODES
 
 
 class Runner:
@@ -82,9 +91,10 @@ async def rejects(run, label, call):
     """
     try:
         result = await call()
-    except ToolError as exc:
+    except (ToolError, WireError) as exc:
         ok = exc.code in KNOWN_CODES
-        return run.check(label, ok, "unknown code %r: %s" % (exc.code, exc.message))
+        return run.check(label, ok, "code %r is outside the contract: %s"
+                         % (exc.code, exc.message))
     except Exception as exc:                       # noqa: BLE001 — that IS the finding
         run.raw.append((label, exc))
         return run.check(label, False,
