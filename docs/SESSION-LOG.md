@@ -67,14 +67,8 @@ Learned by getting it wrong; none of it is obvious from the code.
 
 ## Open — decided but not built
 
-Ordered by what a stranger would hit first.
-
-1. **`get_track` pays for the whole clip map on every call.** Measured 2026-08-04 on the
-   29-track / 181-scene set: `standard` on a track costs ~3 s and ~1 600 tokens, and
-   almost all of it is probing 181 Session slots — even when the caller wanted devices.
-   `session_overview` already scales its clip map to the set; `get_track` does not.
-2. **Clean-install rehearsal** — nobody has ever followed the README from nothing. Do
-   this last, once the README has stopped moving.
+1. **Clean-install rehearsal** — nobody has ever followed the README from nothing, and
+   it is the last thing between here and publication.
 
 Everything else on this list is done. Testing found, in order: the stringified-locator
 bug, twelve unusable tool descriptions, a stale watch registry, a `gone` event that never
@@ -94,6 +88,19 @@ written to a frozen track. None of them were predicted.
 ---
 
 ## Log
+
+### 2026-08-04 — eight waits became three
+
+- `02f82b0` **`get_track` was not paying for the clip map; it was paying for waiting.**
+  Of 3.20 s on a 181-scene track, probing every slot was 0.40 s and reading its 70 clips
+  another 0.40 s. The rest was eight sequential awaits for work that mostly had no order
+  between its parts. A round trip costs a bridge tick whatever it carries, so the count
+  is the only thing that matters. Now three: both describes ride in one batch — the
+  bridge accepts a `describe` inside a batch, which nothing here had used — and
+  everything else follows in one more. The slot probe is gone: an empty slot asked for
+  its clip simply fails and comes back None, so reading all 181 blind finds the same 70
+  and removes the last read that needed an answer before it could be asked.
+  **3.20 s → 1.20 s by index, 1.60 s by name.**
 
 ### 2026-08-04 — an error with no id to pin it on
 
