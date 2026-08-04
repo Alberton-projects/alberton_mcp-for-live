@@ -101,6 +101,20 @@ written to a frozen track. None of them were predicted.
 
 ## Log
 
+### 2026-08-04 — what a caller needs before it writes
+
+- `ec43c7e` **`get_track(detail='full')` now carries each parameter's value, range, its
+  reading in Live's units, whether it is stepped and whether it is disabled.** It had
+  returned names only, while `set_device_parameter`'s docstring sent callers there for the
+  range — a gap nothing tested, which is how the two drifted apart. Found by using the
+  server for real work rather than by a probe: driving a Max for Live device meant one
+  `lom_get` per parameter, and the project's own functional suite ran exactly that loop.
+  A macro-mapped parameter now says so; a write to one is accepted and ignored by Live,
+  which nothing previously reported. One batched read per track instead of one per device.
+- `786d1cd` **Blob parameters are invisible to the LOM** — a `live.step` grid is not in
+  `device.parameters` at all, so a step sequencer answers with its knobs and none of its
+  notes. HANDOFF §7.
+
 ### 2026-08-03 — group and frozen tracks
 
 - `8b15e9f` **The two states the LOM cannot create**, made by hand and then probed. Groups
