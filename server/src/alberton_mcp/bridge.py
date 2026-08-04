@@ -14,7 +14,8 @@ DEFAULT_HOST = os.environ.get("ALBERTON_HOST", "127.0.0.1")
 DEFAULT_PORT = int(os.environ.get("ALBERTON_PORT", "17853"))
 CONTRACT_VERSION = "1.1"
 CONTRACT_MAJOR = "1"
-LINE_LIMIT = 16 * 1024 * 1024 + 1024
+LINE_MAX = 16 * 1024 * 1024          # what the bridge accepts (CONTRACT A.9)
+LINE_LIMIT = LINE_MAX + 1024         # our reader's buffer, a little above it
 REQUEST_TIMEOUT = 15.0
 FEED_MAXLEN = 10000
 INF = float("inf")
@@ -87,6 +88,8 @@ class Bridge:
         self._next_id = 1
         self._connect_lock = asyncio.Lock()
         self.remote_versions = None
+        # The last error the bridge sent with no id to attach it to.
+        self._last_wire_complaint = None
         # Bumped on every successful handshake. Anything the caller cached
         # about the far side — subscription ids above all — belongs to one
         # epoch and is void in the next.
@@ -149,6 +152,18 @@ class Bridge:
                            "carry" % (op, ", ".join(_nonfinite(frame)) or "a value"),
                 "hint": "NaN and infinity have no JSON form. Send a real "
                         "number, or leave the property out."})
+        # Over the limit the bridge answers `too_large` with no id and then
+        # drops the connection, so the caller learns only that the connection
+        # went — the diagnosis is lost with it. Say it here instead, exactly,
+        # and keep the connection.
+        size = len(line.encode("utf-8"))
+        if size > LINE_MAX:
+            raise WireError({
+                "code": "too_large",
+                "message": "%s would send %d bytes; the bridge accepts %d per "
+                           "line" % (op, size, LINE_MAX),
+                "hint": "Split it — a batch into smaller batches, a note write "
+                        "into several calls."})
         self._next_id += 1
         future = asyncio.get_running_loop().create_future()
         self._pending[request_id] = future
@@ -181,6 +196,13 @@ class Bridge:
                 if "event" in frame:
                     self.feed.ingest(frame)
                     continue
+                if frame.get("id") is None and not frame.get("ok", True):
+                    # No id to correlate it with — the line it refers to never
+                    # parsed far enough to have one. Keep it: the bridge drops
+                    # the connection after some of these, and its reason is
+                    # more use than "connection lost".
+                    self._last_wire_complaint = frame.get("error") or {}
+                    continue
                 future = self._pending.pop(frame.get("id"), None)
                 if future is not None and not future.done():
                     future.set_result(frame)
@@ -197,10 +219,16 @@ class Bridge:
                 writer.close()
             except Exception:
                 pass
+        complaint = self._last_wire_complaint
+        self._last_wire_complaint = None
+        why = "connection to the bridge lost"
+        if complaint:
+            why += " after it refused a frame: %s — %s" % (
+                complaint.get("code"), complaint.get("message"))
         pending, self._pending = self._pending, {}
         for future in pending.values():
             if not future.done():
-                future.set_exception(BridgeUnreachable("connection to the bridge lost"))
+                future.set_exception(BridgeUnreachable(why))
 
     async def close(self):
         self._drop_connection()

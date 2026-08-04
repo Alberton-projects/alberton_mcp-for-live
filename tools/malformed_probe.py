@@ -124,11 +124,13 @@ async def still_alive(run, session, label):
     remaining check and buries the call that actually did it.
     """
     try:
-        out = await api.session_overview(session, detail="minimal")
+        # One op, not a walk of the whole set: this runs after every dangerous
+        # call, and session_overview costs three seconds on a large one.
+        out = await api.lom_get(session, path="song", props=["tempo"])
     except Exception as exc:                       # noqa: BLE001
         run.check(label, False, "%s: %s" % (type(exc).__name__, exc))
         raise BridgeWedged(label)
-    tempo = out.get("tempo")
+    tempo = out["values"].get("tempo")
     ok = isinstance(tempo, float) and math.isfinite(tempo)
     run.check(label, ok, "tempo is now %r" % (tempo,))
     if not ok:
