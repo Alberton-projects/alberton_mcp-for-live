@@ -84,6 +84,19 @@ Learned by getting it wrong; none of it is obvious from the code.
   round trip to Live costs ~0.40 s **whatever it carries**, so when something is slow,
   count the awaits before optimising the payload.
 
+- **The server the client talks to is not the source you just edited.** The MCP server
+  loads its code once, at start; editing `server/src` changes nothing until it restarts.
+  Half an hour went into testing behaviour that had been fixed hours earlier. The Remote
+  Script is the opposite — `impl.py` reloads with a Control Surface toggle.
+- **Live reports a parameter's SHORT name.** The device declares `PC Interval`; the LOM
+  says `PC ms`. `Cymbals` is `Cymb`, `Piano1` is `Pno1`. Every tool here matches the name
+  the LOM gives, so a model that reads a long name somewhere and passes it will not find
+  the parameter.
+- **Run the control case before searching.** Four rounds went into bisecting a timing
+  value that appeared to fix a fault. Returning to the *original* value — the user's idea,
+  not mine — worked just as well, and showed the timing had never been involved: something
+  else had changed underneath while I measured. Prove the fault still reproduces before
+  hunting for a threshold.
 - **A new probe fails against itself first.** `malformed_probe` reported eight failures on
   its first clean run; six were its own — it built calls outside its `try`, and it knew
   only the Layer B error codes, not the closed wire set in CONTRACT A.7. Read a new
@@ -91,7 +104,26 @@ Learned by getting it wrong; none of it is obvious from the code.
 
 ## Open — decided but not built
 
-1. **Clean-install rehearsal** — nobody has ever followed the README from nothing, and
+1. **A name locator resolved to an index writes to whatever now sits at that index.**
+   Confirmed 2026-08-04 by widening the window on purpose: `set_track(track="ZZ race 2")`
+   resolved to index 29, the human deleted that track, and the write landed on `ZZ race
+   3` — **and returned success**. The caller named a track, that track no longer existed,
+   and a different one was silently modified. `delete_track` walks the same path.
+   `_track_readback` already guards this shape, but only for `create_*_track` and
+   `duplicate_track`, where the race was first found by accident; every other tool taking
+   a name is exposed. A pre-write identity check — contract 1.1 put `ptr` on `$obj` stubs
+   for exactly this — narrows the window to one tick at the cost of a round trip; closing
+   it completely needs a conditional op in the Remote Script. **The most important thing
+   on this list**, and the only one that can destroy a user's work.
+2. **`get_track(detail='full')` cannot see inside a rack.** It reports the top-level
+   devices' parameters and stops. Chasing a fault down a real chain — sequencer, [PITCH],
+   receiver, plugin, some of them inside racks — meant hand-rolling a walk over
+   `…devices.N.chains.M.devices.K`. The LOM can answer the question; no tool here asks it.
+3. **Nothing tells a caller that a parameter exists but cannot be read.** A M4L author's
+   list-typed parameter is simply absent from `device.parameters` — nine of the Kit
+   Selector's twenty-four are — and the answer looks complete. A count, or a note, would
+   at least say something is missing.
+4. **Clean-install rehearsal** — nobody has ever followed the README from nothing, and
    it is the last thing between here and publication.
 
 Everything else on this list is done. Testing found, in order: the stringified-locator
@@ -125,6 +157,20 @@ written to a frozen track. None of them were predicted.
   its clip simply fails and comes back None, so reading all 181 blind finds the same 70
   and removes the last read that needed an answer before it could be asked.
   **3.20 s → 1.20 s by index, 1.60 s by name.**
+
+### 2026-08-04 — driving it for real, with a human in the way
+
+- **The name→index race is confirmed.** Reproduced deliberately by holding the resolution
+  open until the human edited the set: the write landed on the wrong track and reported
+  success. It is now the first item on the open list.
+- **Blob invisibility generalises beyond `live.step`.** The Kit Selector's nine FX
+  `multislider`s are absent from `device.parameters` too — the LOM offers 18 of the 24
+  parameters the device declares. Anything a Max for Live author declares as a list is
+  invisible to us, and the answer does not say so.
+- An evening also went to a fault that was not one: a group's filter macro at an extreme,
+  put there deliberately and recalled from a saved kit, is indistinguishable from a dead
+  device. Written up in the devices' own `REVIEW.md` §11, with the test-hygiene rule it
+  produced.
 
 ### 2026-08-04 — an error with no id to pin it on
 
