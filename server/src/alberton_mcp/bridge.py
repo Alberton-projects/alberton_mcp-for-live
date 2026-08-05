@@ -12,7 +12,9 @@ from collections import deque
 
 DEFAULT_HOST = os.environ.get("ALBERTON_HOST", "127.0.0.1")
 DEFAULT_PORT = int(os.environ.get("ALBERTON_PORT", "17853"))
-CONTRACT_VERSION = "1.1"
+# Only the major version is compared; minors are additive by definition. The
+# minor the server actually needs for a feature is checked where the feature
+# is used (see api._contract_at_least).
 CONTRACT_MAJOR = "1"
 LINE_MAX = 16 * 1024 * 1024          # what the bridge accepts (CONTRACT A.9)
 LINE_LIMIT = LINE_MAX + 1024         # our reader's buffer, a little above it
@@ -90,12 +92,6 @@ class Bridge:
         self.remote_versions = None
         # The last error the bridge sent with no id to attach it to.
         self._last_wire_complaint = None
-        # Refs resolved from a NAME during the current tool call, each carrying
-        # the identity of the object it matched. _run_atomic verifies them and
-        # marks them stale; the next resolve after that starts a fresh set, so
-        # entries never leak from one call into the next.
-        self.guards = []
-        self._guards_stale = True
         # Bumped on every successful handshake. Anything the caller cached
         # about the far side — subscription ids above all — belongs to one
         # epoch and is void in the next.

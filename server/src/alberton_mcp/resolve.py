@@ -5,7 +5,34 @@ paths (CONTRACT A.5). Every miss produces a structured error with an
 actionable hint.
 """
 
+import contextvars
+
 from .errors import ToolError
+
+# Guards collected by the CURRENT tool call: identities of every object this
+# call resolved from a name, consumed by the call's write. A context variable,
+# not server state, because two tool calls can be in flight at once — each
+# task gets its own copy, so one call's guards can neither block another's
+# write nor vanish from its own. Reviewed 2026-08-05: as shared bridge state,
+# a guard left by a read-only call blocked the next unrelated write, and a
+# parallel call could consume a write's guard out from under it.
+_CALL_GUARDS = contextvars.ContextVar("alberton_call_guards")
+
+
+def begin_call():
+    """Start a fresh guard scope. The MCP server calls this once per tool
+    call; anything resolved before the call's write is guarded, anything from
+    earlier calls is gone."""
+    _CALL_GUARDS.set([])
+
+
+def current_guards():
+    try:
+        return _CALL_GUARDS.get()
+    except LookupError:
+        fresh = []
+        _CALL_GUARDS.set(fresh)
+        return fresh
 
 
 def as_index(spec):
@@ -17,21 +44,16 @@ def as_index(spec):
     return spec
 
 
-def note_guard(bridge, ref):
+def note_guard(ref):
     """Remember a name-resolved object's identity for the write that follows.
 
-    Called on every resolution, not only the ones that match a name: an index
-    resolution has nothing to verify, but it does mark the start of a new call,
-    which is what clears the previous one's entries.
+    An identity is a number. If the bridge could not read one -- an older
+    script, an object that has none -- there is nothing to compare against,
+    and a guard that cannot fail is worse than no guard: it reads as proof.
     """
-    if getattr(bridge, "_guards_stale", True):
-        bridge.guards = []
-        bridge._guards_stale = False
-    # An identity is a number. If the bridge could not read one -- an older
-    # script, an object that has none -- there is nothing to compare against,
-    # and a guard that cannot fail is worse than no guard: it reads as proof.
-    if isinstance(ref.get("ptr"), int) and ref not in bridge.guards:
-        bridge.guards.append(ref)
+    guards = current_guards()
+    if isinstance(ref.get("ptr"), int) and ref not in guards:
+        guards.append(ref)
     return ref
 
 
@@ -78,8 +100,7 @@ async def _resolve_indexed(bridge, spec, base_path, vec_prop, kind, parent="song
             raise ToolError("not_found", "%s %d out of range" % (kind, spec),
                             hint="there are %d %ss (indices 0–%d)"
                                  % (count, kind, count - 1))
-        return note_guard(bridge, {"index": spec,
-                                   "path": "%s.%d" % (base, spec)})
+        return note_guard({"index": spec, "path": "%s.%d" % (base, spec)})
     if isinstance(spec, str):
         names, ptrs = await names_of(bridge, base, count, with_ptr=True)
         matches = [i for i, name in enumerate(names) if name == spec]
@@ -87,14 +108,14 @@ async def _resolve_indexed(bridge, spec, base_path, vec_prop, kind, parent="song
             # Carry the identity of the object we matched. The index is only
             # true for as long as nobody in front of it is added or removed,
             # and a human editing in Live does that in a fifth of a second.
-            return note_guard(bridge, {
+            return note_guard({
                 "index": matches[0], "path": "%s.%d" % (base, matches[0]),
                 "name": spec, "ptr": ptrs[matches[0]]})
         if not matches:
             index = as_index(spec)
             if isinstance(index, int) and 0 <= index < count:
-                return note_guard(bridge, {"index": index,
-                                           "path": "%s.%d" % (base, index)})
+                return note_guard({"index": index,
+                                   "path": "%s.%d" % (base, index)})
             listing = ", ".join("%d:%r" % (i, n) for i, n in enumerate(names))
             raise ToolError("not_found", "no %s named %r" % (kind, spec),
                             hint="available: %s" % (listing or "none"))

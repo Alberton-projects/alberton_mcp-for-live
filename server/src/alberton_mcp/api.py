@@ -110,31 +110,53 @@ async def _gets(bridge, specs):
     return out
 
 
+def _contract_at_least(bridge, major, minor):
+    """Whether the connected script speaks at least contract major.minor.
+
+    Numeric on purpose: a lexicographic compare reads "1.10" as older than
+    "1.2" and silently degrades to the fallback path.
+    """
+    try:
+        parts = [int(p) for p in
+                 str(getattr(bridge, "contract", "1.1")).split(".")[:2]]
+    except ValueError:
+        return False
+    return tuple(parts + [0])[:2] >= (major, minor)
+
+
 async def _run_atomic(bridge, ops, what, guard=None):
     """One wire batch = one undo step. Raises ToolError on any sub-op failure,
     reporting the rollback state; returns the per-op results otherwise.
 
-    `guard` is a ref (or refs) resolved from a *name*. An index resolved from a
-    name is only true until somebody in Live adds or removes a track in front of
-    it — a fifth of a second's work — and after that the same path addresses a
-    different object. Writing to it anyway is the worst failure this server can
-    have: it modifies something nobody asked for and reports success. Confirmed
-    2026-08-04, on `set_track`.
+    A guard is the identity of an object this call resolved from a *name*. An
+    index resolved from a name is only true until somebody in Live adds or
+    removes a track in front of it — a fifth of a second's work — and after
+    that the same path addresses a different object. Writing to it anyway is
+    the worst failure this server can have: it modifies something nobody asked
+    for and reports success. Confirmed 2026-08-04, on `set_track`.
 
-    So the identity of each named object is read in the same batch, as its first
-    op, before anything is written. A batch is one tick, so this costs nothing.
-    If it comes back wrong the write has already happened — the check cannot
-    prevent it, only catch it — so the step is undone and the caller is told the
-    truth. The remaining window is one tick; closing it entirely would need a
-    conditional op in the Remote Script.
+    Guards live in a per-call context (resolve.current_guards) and are
+    consumed here: everything this call resolved is checked in front of its
+    write, and the scope starts empty at the next tool call, so a read-only
+    call's resolutions cannot block a later write and parallel calls cannot
+    touch each other's guards. `guard` overrides the scope for callers that
+    manage their own (song_batch).
+
+    The identity of each named object is checked in the same batch, as its
+    first ops, before anything is written. A batch is one tick, so this costs
+    nothing. Any failed check — moved, deleted, unreadable — stops the batch
+    before the first write.
     """
     if not ops:
         return []
     if guard is None:
-        guard = getattr(bridge, "guards", [])
-    checks = [g for g in (guard if isinstance(guard, (list, tuple)) else [guard])
-              if g and isinstance(g.get("ptr"), int)]
-    bridge._guards_stale = True
+        scope = resolve.current_guards()
+        checks = [g for g in scope if g and isinstance(g.get("ptr"), int)]
+        scope.clear()
+    else:
+        checks = [g for g in (guard if isinstance(guard, (list, tuple))
+                              else [guard])
+                  if g and isinstance(g.get("ptr"), int)]
     # Contract 1.2 gave the bridge an `expect` op. A batch runs in one
     # main-thread slice, in order, and stops at the first failure — so an
     # expect in front of the write makes the window zero: nothing can happen
@@ -142,7 +164,7 @@ async def _run_atomic(bridge, ops, what, guard=None):
     # thread. Against an older script there is no such op, so fall back to
     # reading the identity and undoing afterwards: correct in the end, but the
     # wrong write did happen for a tick.
-    expecting = str(getattr(bridge, "contract", "1.1")).split(".")[:2] >= ["1", "2"]
+    expecting = _contract_at_least(bridge, 1, 2)
     if expecting:
         probes = [{"op": "expect", "path": g["path"], "prop": "_live_ptr",
                    "equals": g["ptr"]} for g in checks]
@@ -157,9 +179,14 @@ async def _run_atomic(bridge, ops, what, guard=None):
     result = await bridge.request("batch", ops=ops)
     if expecting:
         for g, sub in zip(checks, result["results"]):
-            if sub.get("ok") or (sub.get("error") or {}).get("code") \
-                    != "expectation_failed":
+            if sub.get("ok"):
                 continue
+            # ANY failed probe means the object is not where this call
+            # resolved it: expectation_failed when something else sits at the
+            # index, path_not_found when the index itself is gone (deleted at
+            # the tail). The batch stopped there, so nothing after it ran.
+            # Only the first code was handled until 2026-08-05, and a deleted
+            # tail track produced a success-shaped, empty answer.
             raise ToolError(
                 "not_found",
                 "%s: %r is no longer at %s — it moved or was deleted before "
@@ -1536,12 +1563,18 @@ async def set_device_parameter(session, track, device, parameter, value):
         number = _require_number(value, "value",
                                  lo=bounds.get("min"), hi=bounds.get("max"))
         props = {"value": number}
-    result = await session.bridge.request("set", path=param_ref["path"],
-                                          props=props)
+    # Through _run_atomic so the identity guard covers it: track, device and
+    # parameter were all resolved by name a round trip ago, and a device
+    # dragged to another position in Live between then and now would silently
+    # take the write. Reviewed 2026-08-05 — this was a bare set with no guard.
+    results = await _run_atomic(session.bridge,
+                                [{"op": "set", "path": param_ref["path"],
+                                  "props": props}], "set_device_parameter")
+    written = (results[0].get("result") or {}).get("values", {})
     read_back = await _gets(bridge, [(param_ref["path"],
                                       ["value", "display_value", "min", "max",
                                        "name"])])
-    return {"parameter": read_back[0], "written": result["values"]}
+    return {"parameter": read_back[0], "written": written}
 
 
 # --- clip automation ------------------------------------------------------------------
@@ -1810,11 +1843,14 @@ async def list_arrangement_clips(session, track=None):
 async def duplicate_clip_to_arrangement(session, clip, time):
     ref = await resolve.resolve_clip(session.bridge, clip)
     position = _require_number(time, "time", lo=0)
-    result = await session.bridge.request(
-        "call", path=ref["track_path"], method="duplicate_clip_to_arrangement",
-        args=[{"$obj": {"path": ref["clip_path"]}}, position])
+    results = await _run_atomic(
+        session.bridge,
+        [{"op": "call", "path": ref["track_path"],
+          "method": "duplicate_clip_to_arrangement",
+          "args": [{"$obj": {"path": ref["clip_path"]}}, position]}],
+        "duplicate_clip_to_arrangement")
     return {"placed_at": position, "track": ref["track_index"],
-            "result": result.get("value"),
+            "result": (results[0].get("result") or {}).get("value"),
             "note": "see list_arrangement_clips to confirm"}
 
 
@@ -2081,6 +2117,21 @@ async def song_batch(session, calls, stop_on_error=True):
                             hint=hint)
         compiled.append((tool, len(ops)))
         all_ops.extend(ops)
+    # The same identity guard every single-tool write gets: the compilers
+    # above resolved names, and the indices they produced are only true until
+    # somebody edits the set. Guards need the batch to stop at a failed
+    # expect, so they only ride along under stop_on_error=True (the default);
+    # a caller who asks for everything-runs-regardless is trusting its
+    # locators, and the docstring says so. Reviewed 2026-08-05 — song_batch
+    # had no guard at all.
+    scope = resolve.current_guards()
+    checks = [g for g in scope if g and isinstance(g.get("ptr"), int)]
+    scope.clear()
+    probes = []
+    if checks and stop_on_error and _contract_at_least(session.bridge, 1, 2):
+        probes = [{"op": "expect", "path": g["path"], "prop": "_live_ptr",
+                   "equals": g["ptr"]} for g in checks]
+    all_ops = probes + all_ops
     if len(all_ops) > 256:
         raise ToolError("too_large",
                         "song_batch compiles to %d wire ops (max 256)"
@@ -2088,10 +2139,20 @@ async def song_batch(session, calls, stop_on_error=True):
                         hint="split into two song_batch calls")
     result = await session.bridge.request("batch", ops=all_ops,
                                           stop_on_error=stop_on_error)
+    probe_results = result["results"][:len(probes)]
+    call_results = result["results"][len(probes):]
+    for g, sub in zip(checks, probe_results):
+        if sub.get("ok"):
+            continue
+        raise ToolError(
+            "not_found",
+            "song_batch: %r is no longer at %s — it moved or was deleted "
+            "before this call reached Live" % (g.get("name"), g["path"]),
+            hint="nothing was executed; resolve the names again")
     per_call = []
     cursor = 0
     for tool, span in compiled:
-        subs = result["results"][cursor:cursor + span]
+        subs = call_results[cursor:cursor + span]
         cursor += span
         failed = next((s for s in subs if s.get("ok") is False), None)
         if failed:

@@ -14,7 +14,7 @@ from typing import Optional, Union
 
 from mcp.server.fastmcp import FastMCP
 
-from . import api
+from . import api, resolve
 from .bridge import Bridge, BridgeUnreachable, WireError
 from .errors import ToolError
 
@@ -31,6 +31,11 @@ def _get_session() -> api.Session:
 
 
 async def _run(fn, **kwargs):
+    # One tool call, one guard scope: names resolved by THIS call are checked
+    # in front of its write, and nothing resolved by an earlier call survives
+    # into it. Each MCP request runs as its own task, so parallel calls hold
+    # separate copies of the scope.
+    resolve.begin_call()
     try:
         return await fn(_get_session(), **kwargs)
     except ToolError as exc:
@@ -603,7 +608,10 @@ async def song_batch(calls: list, stop_on_error: bool = True) -> dict:
     fire_scene, stop_clip, transport, lom_set, lom_call. Locators resolve
     before execution:
     when creating tracks/scenes and then filling them in the same batch,
-    pass explicit indices."""
+    pass explicit indices. Name-resolved locators are identity-guarded (the
+    batch refuses to run if the named object moved) — except under
+    stop_on_error=false, which runs everything regardless and therefore
+    trusts the locators as resolved."""
     return await _run(api.song_batch, calls=calls, stop_on_error=stop_on_error)
 
 
