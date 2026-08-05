@@ -18,16 +18,18 @@ in HANDOFF, the *spec* in CONTRACT.
 | | |
 |---|---|
 | Contract | 1.2 (additive; major version is what must match) |
-| Remote Script | `remote_script/Alberton_MCP/`, v0.3.1 — installed, but Live runs 0.3.0 in memory until the next Control Surface toggle |
+| Remote Script | `remote_script/Alberton_MCP/`, v0.3.1 |
 | Server | `server/`, package `alberton-mcp` 0.1.0, 46 tools, `mcp<2` pinned |
 | Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 — and the README says so, promising nothing more |
-| Open work | Three items, plus one transient: run `wire_probe` and `limits_probe` against script 0.3.1 once it is toggled in. |
+| Open work | Three items. |
 | Published | No. Publication is deliberately the last step. |
 
-**Tests, all green.** The server was re-verified 2026-08-05 after the review's guard
-rework, against the loaded 29-track / 181-scene *Alberton Multiverse*: `live_verify`
-23/23 and `functional_suite` 53/53 with 46/46 tools. `wire_probe` 36/36 ran the same
-day against script 0.3.0; 0.3.1 pends the toggle.
+**Tests, all green.** Everything was re-verified 2026-08-05 after the review, against
+the loaded 29-track / 181-scene *Alberton Multiverse*: `live_verify` 23/23,
+`functional_suite` 53/53 with 46/46 tools, and — against script 0.3.1 once toggled
+in — `wire_probe` 36/36 and `limits_probe` **15/15, including the formerly flaky
+overflow check**: 10 notices, 10 dropped, 4 082 changes still delivered, the queue
+bounded exactly as designed.
 
 | Suite | Needs Live | Checks |
 |---|---|---|
@@ -196,8 +198,10 @@ written to a frozen track. None of them were predicted.
   exception written down, CLAUDE.md's script rule reworded to what it always meant —
   no vocabulary in the script, but fixes are fine and cost one toggle.
 - Verified after the rework against the loaded *Alberton Multiverse*: `live_verify`
-  23/23, `functional_suite` 53/53 with 46/46 tools, `wire_probe` 36/36 (against 0.3.0;
-  0.3.1 pends the Control Surface toggle, then `wire_probe` and `limits_probe` again).
+  23/23 and `functional_suite` 53/53 with 46/46 tools against the server; then, with
+  0.3.1 toggled in, `wire_probe` 36/36 and `limits_probe` 15/15 — the stalled-consumer
+  check that had failed once and passed twice on the same build now reports 10 notices,
+  10 dropped, 4 082 changes delivered: bounded, and the notice arrives.
 
 ### 2026-08-04 — eight waits became three
 
