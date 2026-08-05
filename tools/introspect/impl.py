@@ -26,8 +26,10 @@ LOG_PATH = os.path.join(OUTPUT_DIR, "lom-introspect.log")
 MAX_DEPTH = 8      # object-graph recursion limit from each root (vectors are free)
 APP_DEPTH = 4      # shallower walk for Application (the browser is Phase 3 work)
 VECTOR_SAMPLE = 2  # elements of each vector to descend into
-MAX_NODES = 2000   # hard budget for one instance walk
+MAX_NODES = 4000   # hard budget for one instance walk
 RERUN_TICK = 30    # update_display ticks (~100 ms each) before the settled pass
+SWEEP_DEPTH = 3    # snapshot depth for the device-class sweep
+SWEEP_NEST = 6     # how deep into rack chains the sweep looks for new classes
 
 # Up-links drag parents in through side doors (e.g. scenes -> clip_slots ->
 # canonical_parent reaches a Track before song.tracks does), which turns the
@@ -294,6 +296,137 @@ def _snapshot(obj, depth, seen, budget):
     return node
 
 
+def _classes_in(node, into):
+    """Every class name a walk result mentions, snapshots and stubs alike."""
+    if isinstance(node, dict):
+        name = node.get("class")
+        if isinstance(name, str):
+            into.add(name)
+        for value in node.values():
+            _classes_in(value, into)
+    elif isinstance(node, list):
+        for value in node:
+            _classes_in(value, into)
+    return into
+
+
+def _sweep_unseen_classes(song, seen, budget, already):
+    """One snapshot of every class the curated walk never met.
+
+    The curated walk samples the first two elements of each vector, so a set's
+    variety mostly hides behind tracks 3..N: device classes inside rack
+    chains, and the classes that hang off clips — an audio clip's Sample and
+    warp markers, a clip's automation envelopes — and off tracks (take
+    lanes). Class-level members come from the module walk either way; what
+    this buys is the evidence that a class exists in practice, one real
+    instance's property values, and the per-instance errors that only show up
+    live. Read-only, like everything here.
+    """
+    found = {}
+
+    def grab(obj, where):
+        cls = type(obj).__name__
+        if cls not in already and cls not in found:
+            found[cls] = {"where": where,
+                          "snapshot": _snapshot(obj, SWEEP_DEPTH, seen, budget)}
+
+    def grab_from_props(obj, where, names):
+        """Snapshot prop values (a vector's head element) of unseen classes."""
+        for name in names:
+            if budget[0] <= 0:
+                return
+            try:
+                value = getattr(obj, name)
+            except Exception:
+                continue
+            spot = "%s.%s" % (where, name)
+            if value is None:
+                continue
+            if _looks_like_vector(value) and not isinstance(value, str):
+                try:
+                    if len(value) == 0:
+                        continue
+                    value = value[0]
+                    spot += ".0"
+                except Exception:
+                    continue
+            if _is_lom_object(value):
+                grab(value, spot)
+
+    def visit_devices(container, where, nest):
+        if budget[0] <= 0 or nest > SWEEP_NEST:
+            return
+        try:
+            devices = container.devices
+            count = len(devices)
+        except Exception:
+            return
+        for index in range(count):
+            try:
+                device = devices[index]
+            except Exception:
+                continue
+            here = "%s.devices.%d" % (where, index)
+            grab(device, here)
+            try:
+                if device.can_have_chains:
+                    chains = device.chains
+                    for c in range(len(chains)):
+                        grab(chains[c], "%s.chains.%d" % (here, c))
+                        visit_devices(chains[c], "%s.chains.%d" % (here, c),
+                                      nest + 1)
+            except Exception:
+                pass
+            try:
+                if device.can_have_drum_pads and device.has_drum_pads:
+                    pads = device.drum_pads
+                    if len(pads):
+                        grab(pads[0], "%s.drum_pads.0" % here)
+            except Exception:
+                pass
+
+    def visit_clip_sources(track, where):
+        """First MIDI and first audio clip per track: the classes that hang
+        off clips are where most of the never-met list lives."""
+        try:
+            slots = track.clip_slots
+        except Exception:
+            return
+        wanted = {"midi": True, "audio": True}
+        for s in range(len(slots)):
+            if budget[0] <= 0 or not (wanted["midi"] or wanted["audio"]):
+                return
+            try:
+                clip = slots[s].clip
+                if clip is None:
+                    continue
+                kind = "midi" if clip.is_midi_clip else "audio"
+            except Exception:
+                continue
+            if not wanted[kind]:
+                continue
+            wanted[kind] = False
+            here = "%s.clip_slots.%d.clip" % (where, s)
+            grab_from_props(clip, here,
+                            ("sample", "warp_markers", "automation_envelopes"))
+
+    try:
+        lanes = ("take_lanes",)
+        for t in range(len(song.tracks)):
+            where = "song.tracks.%d" % t
+            visit_devices(song.tracks[t], where, 0)
+            grab_from_props(song.tracks[t], where, lanes)
+            visit_clip_sources(song.tracks[t], where)
+        for r in range(len(song.return_tracks)):
+            visit_devices(song.return_tracks[r], "song.return_tracks.%d" % r, 0)
+        visit_devices(song.master_track, "song.master_track", 0)
+        grab_from_props(song, "song", ("cue_points", "groove_pool",
+                                       "tuning_system"))
+    except Exception as exc:
+        found["_error"] = _safe_repr(exc)
+    return found
+
+
 def _walk_instances(c_instance):
     """Walk in curated order so full snapshots land at canonical locations."""
     seen = set()
@@ -320,6 +453,10 @@ def _walk_instances(c_instance):
         roots["application"] = {"error": _safe_repr(exc)}
     if app is not None:
         roots["application"] = _snapshot(app, APP_DEPTH, seen, budget)
+    if song is not None:
+        already = _classes_in(roots, set())
+        roots["class_sweep"] = _sweep_unseen_classes(
+            song, seen, budget, already)
     roots["_nodes_used"] = MAX_NODES - budget[0]
     return roots
 

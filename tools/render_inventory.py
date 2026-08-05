@@ -15,7 +15,11 @@ ROOT = Path(__file__).resolve().parent.parent
 JSON_PATH = ROOT / "docs" / "lom-raw.json"
 MD_PATH = ROOT / "docs" / "lom-inventory.md"
 
-DOC_LIMIT = 110  # characters of docstring shown per member
+# Characters of docstring shown per member. 110 used to cut load-bearing
+# sentences mid-word ("Throws an exception if can_have_drum_pads is f…");
+# the first meaningful line is short for most members, so the limit only
+# exists for the pathological ones.
+DOC_LIMIT = 300
 
 
 def first_line(doc):
@@ -42,6 +46,20 @@ def method_signature(doc):
     return first_line(doc)
 
 
+def classes_met_live(node, into):
+    """Every class name the instance walk actually met, snapshot or stub."""
+    if isinstance(node, dict):
+        name = node.get("class")
+        if isinstance(name, str):
+            into.add(name)
+        for value in node.values():
+            classes_met_live(value, into)
+    elif isinstance(node, list):
+        for value in node:
+            classes_met_live(value, into)
+    return into
+
+
 def listeners_of(members):
     names = set()
     for name in members:
@@ -50,7 +68,7 @@ def listeners_of(members):
     return sorted(names)
 
 
-def render_class(out, qualname, cls):
+def render_class(out, qualname, cls, met=frozenset()):
     out.append("### `%s`" % qualname)
     doc = first_line(cls.get("doc"))
     bases = [b for b in cls.get("bases", []) if b not in ("instance", "object")]
@@ -59,6 +77,14 @@ def render_class(out, qualname, cls):
         meta.append("bases: " + ", ".join(bases))
     if doc:
         meta.append(doc)
+    # Which classes the instance walk really met matters: everything below
+    # comes from the static module walk either way, but a class never seen
+    # live is theory — nothing on this machine has ever confirmed it exists
+    # outside dir(Live).
+    bare = qualname.rsplit(".", 1)[-1]
+    if met:
+        meta.append("seen live" if bare in met
+                    else "never met as an instance on this machine")
     if meta:
         out.append("*%s*" % " — ".join(meta))
     out.append("")
@@ -117,7 +143,7 @@ def render_class(out, qualname, cls):
             out.append("### `%s.%s` — introspection error: %s" % (qualname, name, nested["error"]))
             out.append("")
             continue
-        render_class(out, "%s.%s" % (qualname, name), nested)
+        render_class(out, "%s.%s" % (qualname, name), nested, met)
 
 
 def main():
@@ -146,6 +172,25 @@ def main():
     out.append("")
 
     modules = data.get("modules", {})
+    met = classes_met_live(data.get("instances", {}), set())
+
+    all_classes = set()
+    for module in modules.values():
+        all_classes.update(module.get("classes", {}))
+    if met:
+        confirmed = sorted(all_classes & met)
+        theoretical = sorted(all_classes - met)
+        out.append("## Instance coverage")
+        out.append("")
+        out.append(
+            "%d of %d module classes were met as real instances in the set "
+            "that was open when this was dumped; the rest exist in dir(Live) "
+            "but nothing here has ever confirmed one. Per class, the header "
+            "below says which." % (len(confirmed), len(all_classes)))
+        out.append("")
+        out.append("Never met: " + (", ".join("`%s`" % c for c in theoretical)
+                                    if theoretical else "(none)"))
+        out.append("")
 
     out.append("## Module index")
     out.append("")
@@ -179,7 +224,7 @@ def main():
             out.append("Enum `%s`: %s" % (name, pairs))
             out.append("")
         for name in sorted(module.get("classes", {})):
-            render_class(out, name, module["classes"][name])
+            render_class(out, name, module["classes"][name], met)
 
     MD_PATH.write_text("\n".join(out) + "\n")
     print("wrote %s (%d lines)" % (MD_PATH, len(out)))
