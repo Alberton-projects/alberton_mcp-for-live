@@ -90,6 +90,12 @@ class Bridge:
         self.remote_versions = None
         # The last error the bridge sent with no id to attach it to.
         self._last_wire_complaint = None
+        # Refs resolved from a NAME during the current tool call, each carrying
+        # the identity of the object it matched. _run_atomic verifies them and
+        # marks them stale; the next resolve after that starts a fresh set, so
+        # entries never leak from one call into the next.
+        self.guards = []
+        self._guards_stale = True
         # Bumped on every successful handshake. Anything the caller cached
         # about the far side — subscription ids above all — belongs to one
         # epoch and is void in the next.

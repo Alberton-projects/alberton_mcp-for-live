@@ -26,10 +26,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "server" / "src"))
+sys.path.insert(0, str(ROOT / "tools"))
 
 from alberton_mcp import api                      # noqa: E402
 from alberton_mcp.bridge import Bridge            # noqa: E402
 from alberton_mcp.errors import ToolError         # noqa: E402
+import scratch                                   # noqa: E402
 
 SCRATCH_MIDI = "ZZ scratch midi"
 SCRATCH_AUDIO = "ZZ scratch audio"
@@ -130,6 +132,7 @@ async def main():
 
         # ---------------------------------------------------------------- tracks
         run.section("TRACKS")
+        await scratch.sweep(session, api)
         created = await api.create_midi_track(session, name=SCRATCH_MIDI,
                                               color="#00A0A0")
         midi_index = created["track"]["index"]

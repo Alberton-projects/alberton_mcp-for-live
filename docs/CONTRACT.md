@@ -197,7 +197,17 @@ accepts them, which is why this has to be said — and handing one to Live stops
 its main thread outright, with no exception for the script to catch. Since the
 line never parses, the refusal carries `"id": null`.
 
-Closed code set (v1): `bad_request`, `unknown_op`, `path_not_found`,
+**`expect`** `{path, prop, equals}` → `{"ok_expected": <value>}`. Fails with
+`expectation_failed` unless the property still holds that value. Its only purpose
+is to sit in front of a write **inside the same batch**: a batch runs in one
+main-thread slice, in order, and stops at the first failure, so an expect that
+fails means nothing after it runs at all. That is what makes "act on the object I
+named" true rather than "act on whatever is at the index that object had when I
+looked" — a human dragging a track in Live cannot slip in between, because Live's
+UI runs on that same thread. Added in contract 1.2; a server talking to an older
+script must fall back to reading the identity and undoing after the fact.
+
+Closed code set (v1): `expectation_failed`, `bad_request`, `unknown_op`, `path_not_found`,
 `property_not_found`, `property_read_only`, `method_not_found`, `type_error`,
 `not_a_midi_clip`, `live_error` (C++ exception surfaced; `message` carries its text),
 `unsupported_in_batch`, `subscription_not_found`, `not_listenable`, `too_large`,

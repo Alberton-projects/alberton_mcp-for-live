@@ -110,16 +110,76 @@ async def _gets(bridge, specs):
     return out
 
 
-async def _run_atomic(bridge, ops, what):
+async def _run_atomic(bridge, ops, what, guard=None):
     """One wire batch = one undo step. Raises ToolError on any sub-op failure,
-    reporting the rollback state; returns the per-op results otherwise."""
+    reporting the rollback state; returns the per-op results otherwise.
+
+    `guard` is a ref (or refs) resolved from a *name*. An index resolved from a
+    name is only true until somebody in Live adds or removes a track in front of
+    it — a fifth of a second's work — and after that the same path addresses a
+    different object. Writing to it anyway is the worst failure this server can
+    have: it modifies something nobody asked for and reports success. Confirmed
+    2026-08-04, on `set_track`.
+
+    So the identity of each named object is read in the same batch, as its first
+    op, before anything is written. A batch is one tick, so this costs nothing.
+    If it comes back wrong the write has already happened — the check cannot
+    prevent it, only catch it — so the step is undone and the caller is told the
+    truth. The remaining window is one tick; closing it entirely would need a
+    conditional op in the Remote Script.
+    """
     if not ops:
         return []
+    if guard is None:
+        guard = getattr(bridge, "guards", [])
+    checks = [g for g in (guard if isinstance(guard, (list, tuple)) else [guard])
+              if g and isinstance(g.get("ptr"), int)]
+    bridge._guards_stale = True
+    # Contract 1.2 gave the bridge an `expect` op. A batch runs in one
+    # main-thread slice, in order, and stops at the first failure — so an
+    # expect in front of the write makes the window zero: nothing can happen
+    # between the check and the write, because Live's UI runs on that same
+    # thread. Against an older script there is no such op, so fall back to
+    # reading the identity and undoing afterwards: correct in the end, but the
+    # wrong write did happen for a tick.
+    expecting = str(getattr(bridge, "contract", "1.1")).split(".")[:2] >= ["1", "2"]
+    if expecting:
+        probes = [{"op": "expect", "path": g["path"], "prop": "_live_ptr",
+                   "equals": g["ptr"]} for g in checks]
+    else:
+        probes = [{"op": "get", "path": g["path"], "props": ["_live_ptr"]}
+                  for g in checks]
+    ops = probes + list(ops)
     if len(ops) > 256:
         raise ToolError("too_large",
                         "%s compiles to %d wire ops (max 256)" % (what, len(ops)),
                         hint="split the work into smaller calls")
     result = await bridge.request("batch", ops=ops)
+    if expecting:
+        for g, sub in zip(checks, result["results"]):
+            if sub.get("ok") or (sub.get("error") or {}).get("code") \
+                    != "expectation_failed":
+                continue
+            raise ToolError(
+                "not_found",
+                "%s: %r is no longer at %s — it moved or was deleted before "
+                "this call reached Live" % (what, g.get("name"), g["path"]),
+                hint="nothing was written; resolve the name again")
+        checks = []
+    for g, sub in zip(checks, result["results"]):
+        seen = sub["result"]["values"].get("_live_ptr") if sub.get("ok") else None
+        if seen == g["ptr"]:
+            continue
+        undone = await _undo_step(bridge)
+        raise ToolError(
+            "not_found",
+            "%s: %r is no longer at %s — it moved or was deleted while this "
+            "call was in flight, and the write landed on a different object"
+            % (what, g.get("name"), g["path"]),
+            hint=("that write has been undone (%s); resolve the name again"
+                  % undone) if undone else
+                 ("THE WRITE COULD NOT BE UNDONE — check %s by hand" % g["path"]))
+    result["results"] = result["results"][len(probes):]
     if any(not sub.get("ok", False) for sub in result["results"]
            if not sub.get("skipped")):
         first_error = next(sub["error"] for sub in result["results"]
@@ -132,6 +192,15 @@ async def _run_atomic(bridge, ops, what):
                         "%s failed: %s" % (what, first_error.get("message")),
                         hint=hint)
     return result["results"]
+
+
+async def _undo_step(bridge):
+    """Undo the step just committed. Returns Live's own description, or None."""
+    try:
+        result = await bridge.request("call", path="song", method="undo", args=[])
+        return result.get("value") or "undone"
+    except Exception:                              # noqa: BLE001
+        return None
 
 
 def _require_number(value, name, lo=None, hi=None):

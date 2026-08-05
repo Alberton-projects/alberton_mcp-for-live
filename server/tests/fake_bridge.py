@@ -245,7 +245,7 @@ class FakeBridgeServer:
                 "message": "fake bridge raised: %r" % (exc,)}}, events
 
     def _op_ping(self, frame, events):
-        return {"contract": "1.1", "script": "fake", "live": "12.4.3",
+        return {"contract": "1.2", "script": "fake", "live": "12.4.3",
                 "python": "3.11.6"}
 
     def _op_describe(self, frame, events):
@@ -260,11 +260,35 @@ class FakeBridgeServer:
             props[key] = self.live.encode(value, "%s.%s" % (path, key))
         return {"class": node.get("__class__"), "path": path, "props": props}
 
+    def _op_expect(self, frame, events):
+        """Fail unless a property still holds what the caller resolved."""
+        node = self.live.resolve(frame["path"])
+        prop = frame.get("prop")
+        if not isinstance(prop, str) or not prop:
+            raise WireFail("bad_request", "expect requires a prop name")
+        if "equals" not in frame:
+            raise WireFail("bad_request", "expect requires 'equals'")
+        actual = node.get("_live_ptr", id(node)) if prop == "_live_ptr" \
+            else (node.get(prop) if isinstance(node, dict) else None)
+        if actual != frame["equals"]:
+            raise WireFail("expectation_failed",
+                           "%s.%s is %r, not the %r this call resolved"
+                           % (frame["path"], prop, actual, frame["equals"]),
+                           path=frame["path"], prop=prop)
+        return {"ok_expected": frame["equals"]}
+
     def _op_get(self, frame, events):
         path = frame["path"]
         node = self.live.resolve(path)
         values = {}
         for prop in frame["props"]:
+            # Every LOM object has an identity, and it is what tells a caller
+            # that the thing at an index is not the thing it resolved. The fake
+            # had none on tracks, so a stale-locator guard could not fail here
+            # even when it would have failed against Live.
+            if prop == "_live_ptr" and isinstance(node, dict):
+                values[prop] = node.get("_live_ptr", id(node))
+                continue
             if not isinstance(node, dict) or prop in INTERNAL_KEYS \
                     or prop not in node:
                 values[prop] = {"$error": {"code": "property_not_found",

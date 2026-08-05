@@ -31,7 +31,9 @@ async def test_create_clip_is_one_wire_batch(fake, session):
     creating = batches_containing(fake, "call")
     assert len(creating) == 1
     ops = [sub["op"] for sub in creating[0]["ops"]]
-    assert ops == ["call", "set", "edit_notes"]  # one batch, one undo step
+    # still one batch and one undo step; the leading expect is the identity
+    # check that rides along for free (see test_stale_locator.py)
+    assert ops == ["expect", "call", "set", "edit_notes"]
     clip = fake.live.song["tracks"][0]["clip_slots"][0]["clip"]
     assert clip["color"] == 0xFF5533
     assert len(clip["notes"]) == 3

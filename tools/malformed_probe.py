@@ -37,10 +37,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "server" / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from alberton_mcp import api                      # noqa: E402
 from alberton_mcp.bridge import Bridge, WireError  # noqa: E402
 from alberton_mcp.errors import ToolError         # noqa: E402
+import scratch                                   # noqa: E402
 
 SCRATCH = "ZZ malformed"
 
@@ -145,6 +147,7 @@ async def main():
     try:
         overview = await api.session_overview(session, detail="minimal")
         tempo = overview["tempo"]
+        await scratch.sweep(session, api)
         created = await api.create_midi_track(session, name=SCRATCH)
         index = created["track"]["index"]
         await api.set_track(session, track=index, volume={"db": -70})

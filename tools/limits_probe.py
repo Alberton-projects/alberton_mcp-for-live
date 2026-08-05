@@ -23,10 +23,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "server" / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT / "tools"))
 
 from alberton_mcp import api                      # noqa: E402
 from alberton_mcp.bridge import Bridge, WireError  # noqa: E402
 from alberton_mcp.errors import ToolError         # noqa: E402
+import scratch                                   # noqa: E402
 
 HOST, PORT = "127.0.0.1", 17853
 SCRATCH = "ZZ limits"
@@ -190,6 +192,7 @@ async def main():
     session = api.Session(Bridge())
     index = None
     try:
+        await scratch.sweep(session, api)
         created = await api.create_midi_track(session, name=SCRATCH)
         index = created["track"]["index"]
         # Live arms a new MIDI track, and if session record happens to be on

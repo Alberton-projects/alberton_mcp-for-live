@@ -22,6 +22,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "server" / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from alberton_mcp import api                      # noqa: E402
 from alberton_mcp.bridge import (Bridge,          # noqa: E402
@@ -124,6 +125,7 @@ async def main():
         print("set: %d tracks, tempo %s, playing=%s"
               % (overview["counts"]["tracks"], overview["tempo"],
                  overview["is_playing"]))
+        await scratch.sweep(session, api)
         created = await api.create_midi_track(session, name=SCRATCH)
         index = created["track"]["index"]
 

@@ -28,8 +28,8 @@ import Live
 HOST = "127.0.0.1"
 PORT = 17853
 
-CONTRACT_VERSION = "1.1"
-SCRIPT_VERSION = "0.2.1"
+CONTRACT_VERSION = "1.2"
+SCRIPT_VERSION = "0.3.0"
 
 LINE_MAX = 16 * 1024 * 1024
 BATCH_MAX = 256
@@ -44,7 +44,11 @@ LOG_PATH = os.path.join(_SCRIPT_DIR, "alberton.log")
 
 _LIVE_MODULE_NAMES = set(n for n in dir(Live) if not n.startswith("__"))
 
-BATCHABLE_OPS = ("describe", "get", "set", "call", "get_notes", "edit_notes")
+# `expect` is here for one reason: a guard is only worth anything if it sits
+# in the SAME batch as the write it guards. Alone it would be a read whose
+# answer is already stale by the time the write goes out.
+BATCHABLE_OPS = ("describe", "get", "set", "call", "get_notes", "edit_notes",
+                 "expect")
 
 NOTE_FIELDS = (
     ("pitch", "pitch"),
@@ -528,6 +532,47 @@ class Bridge(object):
                 continue
             props[name] = self._encode(value, path_hint=path + "." + name)
         return {"class": cls.__name__, "path": path, "props": props}
+
+    def _op_expect(self, params):
+        """Fail unless a property still holds the value the caller resolved.
+
+        A batch runs in one main-thread slice, in order, so an `expect` placed
+        before a write is the only way to make "act on the object I named" true
+        rather than "act on whatever is at the index that object had". Nothing —
+        not a human dragging a track in Live, which runs on this same thread —
+        can slip between the check and the write.
+
+        Without it the server could only read the identity, write, notice
+        afterwards, and undo: correct in the end, but the wrong thing had
+        already happened. With `stop_on_error` (the default for a batch that
+        must be atomic) a failed expect means nothing after it runs at all.
+
+        Added for exactly one caller: a locator resolved from a NAME.
+        """
+        path = params.get("path")
+        prop = params.get("prop")
+        if not isinstance(prop, str) or not prop:
+            raise ProtocolError("bad_request", "expect requires a prop name")
+        if "equals" not in params:
+            raise ProtocolError("bad_request", "expect requires 'equals'")
+        wanted = params["equals"]
+        obj = self._resolve(path)
+        descriptor = getattr(type(obj), prop, None)
+        if not isinstance(descriptor, property):
+            raise ProtocolError("property_not_found",
+                                "no property '%s' on %s" % (prop, type(obj).__name__),
+                                path=path, prop=prop)
+        try:
+            actual = getattr(obj, prop)
+        except Exception as exc:
+            raise ProtocolError("live_error", str(exc), path=path, prop=prop)
+        if actual != wanted:
+            raise ProtocolError(
+                "expectation_failed",
+                "%s.%s is %r, not the %r this call resolved" % (path, prop,
+                                                                actual, wanted),
+                path=path, prop=prop)
+        return {"ok_expected": wanted}
 
     def _op_get(self, params):
         path = params.get("path")
@@ -1051,6 +1096,7 @@ Bridge._ops = {
     "ping": Bridge._op_ping,
     "describe": Bridge._op_describe,
     "get": Bridge._op_get,
+    "expect": Bridge._op_expect,
     "set": Bridge._op_set,
     "call": Bridge._op_call,
     "get_notes": Bridge._op_get_notes,

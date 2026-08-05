@@ -17,11 +17,11 @@ in HANDOFF, the *spec* in CONTRACT.
 
 | | |
 |---|---|
-| Contract | 1.1 (additive; major version is what must match) |
-| Remote Script | `remote_script/Alberton_MCP/`, v0.2.1 |
+| Contract | 1.2 (additive; major version is what must match) |
+| Remote Script | `remote_script/Alberton_MCP/`, v0.3.0 |
 | Server | `server/`, package `alberton-mcp` 0.1.0, 46 tools, `mcp<2` pinned |
 | Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 — and the README says so, promising nothing more |
-| Open work | Four items. The first — a name locator writing to whatever now sits at that index — is the only one that can lose a user's work. |
+| Open work | Five items. The first — an overflow notice that the overflow itself can suppress — is the only one in the Remote Script. |
 | Published | No. Publication is deliberately the last step. |
 
 **Tests, all green.** Everything needing Live was last run 2026-08-04 against the loaded
@@ -30,7 +30,7 @@ against both that and an empty set.
 
 | Suite | Needs Live | Checks |
 |---|---|---|
-| `server/tests/` (pytest) | no | 129 |
+| `server/tests/` (pytest) | no | 135 |
 | `tools/wire_probe.py` | yes | 36 |
 | `tools/live_verify.py` | yes | 23 |
 | `tools/lifecycle_probe.py` | yes | 23 (+4 manual) |
@@ -56,8 +56,15 @@ Learned by getting it wrong; none of it is obvious from the code.
   index behind it, and a probe that computed one a moment earlier will act on the wrong
   thing. This is a real hazard, not a testing artefact — it is how the `create_*_track`
   race was found.
-- **Probes work on scratch material named `ZZ …`** and delete it afterwards. If one dies
-  half-way, look for tracks with that prefix; nothing else in the set is ever touched.
+- **Probes work on scratch material named `ZZ …`** and delete it afterwards, and each one
+  now *sweeps* leftovers before it starts (`tools/scratch.py`), so a killed run heals on
+  the next. The prefix is a contract, not a habit: `live_verify` used to call its tracks
+  "Alberton MCP verify", and after a killed run those sat in the user's own performance
+  set looking like part of the rig.
+- **Run anything that touches Live in the background and wait on its summary.** Chaining
+  probes inside a foreground time limit kills them mid-run: `functional_suite` died
+  half-way that way and left tracks behind. Start them detached, then poll for the
+  result.
 - **Editing `impl.py` needs no Live restart** — toggle the Control Surface to None and
   back. Only `__init__.py` changing costs a restart, and it is deliberately frozen.
 - **Record a commit hash in this file in a *separate* commit.** Writing it and then
@@ -104,26 +111,28 @@ Learned by getting it wrong; none of it is obvious from the code.
 
 ## Open — decided but not built
 
-1. **A name locator resolved to an index writes to whatever now sits at that index.**
-   Confirmed 2026-08-04 by widening the window on purpose: `set_track(track="ZZ race 2")`
-   resolved to index 29, the human deleted that track, and the write landed on `ZZ race
-   3` — **and returned success**. The caller named a track, that track no longer existed,
-   and a different one was silently modified. `delete_track` walks the same path.
-   `_track_readback` already guards this shape, but only for `create_*_track` and
-   `duplicate_track`, where the race was first found by accident; every other tool taking
-   a name is exposed. A pre-write identity check — contract 1.1 put `ptr` on `$obj` stubs
-   for exactly this — narrows the window to one tick at the cost of a round trip; closing
-   it completely needs a conditional op in the Remote Script. **The most important thing
-   on this list**, and the only one that can destroy a user's work.
-2. **`get_track(detail='full')` cannot see inside a rack.** It reports the top-level
+1. **The overflow notice is subject to the limit it exists to report.** `_send` drops
+   events once the outbox reaches `OUTBOX_MAX`, and `_flush_subscriptions` then reports
+   the drops with another `_send` carrying `event_sub` — which hits the same full-queue
+   check and is dropped in turn. The notice only gets out once the consumer has drained
+   the queue below the cap, so whether it arrives at all is a race between the drain and
+   the ticks still producing. `limits_probe` failed once and passed twice on the same
+   build for exactly this reason. Fix: keep at most one outstanding overflow notice per
+   subscription and let that one bypass the cap — bounded at `OUTBOX_MAX + 128`, and it
+   is the one frame that must not be lost. Remote Script change.
+2. **`limits_probe` gives up on the first empty read.** Its drain loop breaks when a
+   3-second read returns nothing, which on a slow socket can happen a few hundred frames
+   short of the notice. Even with the bridge fixed, it should drain to the deadline.
+
+3. **`get_track(detail='full')` cannot see inside a rack.** It reports the top-level
    devices' parameters and stops. Chasing a fault down a real chain — sequencer, [PITCH],
    receiver, plugin, some of them inside racks — meant hand-rolling a walk over
    `…devices.N.chains.M.devices.K`. The LOM can answer the question; no tool here asks it.
-3. **Nothing tells a caller that a parameter exists but cannot be read.** A M4L author's
+4. **Nothing tells a caller that a parameter exists but cannot be read.** A M4L author's
    list-typed parameter is simply absent from `device.parameters` — nine of the Kit
    Selector's twenty-four are — and the answer looks complete. A count, or a note, would
    at least say something is missing.
-4. **Clean-install rehearsal** — nobody has ever followed the README from nothing, and
+5. **Clean-install rehearsal** — nobody has ever followed the README from nothing, and
    it is the last thing between here and publication.
 
 Everything else on this list is done. Testing found, in order: the stringified-locator
@@ -157,6 +166,25 @@ written to a frozen track. None of them were predicted.
   its clip simply fails and comes back None, so reading all 181 blind finds the same 70
   and removes the last read that needed an answer before it could be asked.
   **3.20 s → 1.20 s by index, 1.60 s by name.**
+
+### 2026-08-04 — the race closed, with a window of zero
+
+- **Contract 1.2, script 0.3.0: the `expect` op.** A batch runs in one main-thread slice,
+  in order, and stops at the first failure, so an `expect` in front of a write makes the
+  window zero — a human dragging a track in Live cannot slip between the check and the
+  write, because Live's UI runs on that same thread. A name-resolved ref now carries the
+  object's `_live_ptr`, and `_run_atomic` puts the check in front of every mutation
+  automatically: all 31 call sites, none of them touched. Verified against Live —
+  `not_found`, *nothing was written*, and the ordinary rename still works. Against an
+  older script it falls back to reading the identity and undoing afterwards; both paths
+  have tests.
+- Three things that had to be fixed to make the guard real: the fake bridge gave tracks no
+  identity, so the guard **could not fail** there even where it would have failed against
+  Live; the server accepted a `$error` as an identity; and `expect` was a top-level op the
+  batch allowlist rejected — the only place it is worth anything.
+- **Probes sweep their own leftovers now** (`tools/scratch.py`), and `live_verify` finally
+  uses the `ZZ` prefix its own convention requires — its `Alberton MCP verify` tracks had
+  been sitting in the user's performance set looking native after a killed run.
 
 ### 2026-08-04 — driving it for real, with a human in the way
 

@@ -17,6 +17,24 @@ def as_index(spec):
     return spec
 
 
+def note_guard(bridge, ref):
+    """Remember a name-resolved object's identity for the write that follows.
+
+    Called on every resolution, not only the ones that match a name: an index
+    resolution has nothing to verify, but it does mark the start of a new call,
+    which is what clears the previous one's entries.
+    """
+    if getattr(bridge, "_guards_stale", True):
+        bridge.guards = []
+        bridge._guards_stale = False
+    # An identity is a number. If the bridge could not read one -- an older
+    # script, an object that has none -- there is nothing to compare against,
+    # and a guard that cannot fail is worse than no guard: it reads as proof.
+    if isinstance(ref.get("ptr"), int) and ref not in bridge.guards:
+        bridge.guards.append(ref)
+    return ref
+
+
 async def vec_len(bridge, path, prop):
     result = await bridge.request("get", path=path, props=[prop])
     value = result["values"].get(prop)
@@ -25,19 +43,25 @@ async def vec_len(bridge, path, prop):
     return value["$vec"]["len"]
 
 
-async def names_of(bridge, base, count):
+async def names_of(bridge, base, count, with_ptr=False):
+    """The names in a vector, and optionally each object's identity.
+
+    `_live_ptr` rides along in the same batch, so it is free. It is what lets a
+    caller notice that the thing it named has moved out from under the index it
+    resolved to — see `identity_of`.
+    """
     if count == 0:
-        return []
-    ops = [{"op": "get", "path": "%s.%d" % (base, i), "props": ["name"]}
+        return ([], []) if with_ptr else []
+    props = ["name", "_live_ptr"] if with_ptr else ["name"]
+    ops = [{"op": "get", "path": "%s.%d" % (base, i), "props": props}
            for i in range(count)]
     result = await bridge.request("batch", ops=ops, stop_on_error=False)
-    names = []
+    names, ptrs = [], []
     for sub in result["results"]:
-        if sub.get("ok"):
-            names.append(sub["result"]["values"].get("name"))
-        else:
-            names.append(None)
-    return names
+        values = sub["result"]["values"] if sub.get("ok") else {}
+        names.append(values.get("name"))
+        ptrs.append(values.get("_live_ptr"))
+    return (names, ptrs) if with_ptr else names
 
 
 async def _resolve_indexed(bridge, spec, base_path, vec_prop, kind, parent="song"):
@@ -54,17 +78,23 @@ async def _resolve_indexed(bridge, spec, base_path, vec_prop, kind, parent="song
             raise ToolError("not_found", "%s %d out of range" % (kind, spec),
                             hint="there are %d %ss (indices 0–%d)"
                                  % (count, kind, count - 1))
-        return {"index": spec, "path": "%s.%d" % (base, spec)}
+        return note_guard(bridge, {"index": spec,
+                                   "path": "%s.%d" % (base, spec)})
     if isinstance(spec, str):
-        names = await names_of(bridge, base, count)
+        names, ptrs = await names_of(bridge, base, count, with_ptr=True)
         matches = [i for i, name in enumerate(names) if name == spec]
         if len(matches) == 1:
-            return {"index": matches[0], "path": "%s.%d" % (base, matches[0]),
-                    "name": spec}
+            # Carry the identity of the object we matched. The index is only
+            # true for as long as nobody in front of it is added or removed,
+            # and a human editing in Live does that in a fifth of a second.
+            return note_guard(bridge, {
+                "index": matches[0], "path": "%s.%d" % (base, matches[0]),
+                "name": spec, "ptr": ptrs[matches[0]]})
         if not matches:
             index = as_index(spec)
             if isinstance(index, int) and 0 <= index < count:
-                return {"index": index, "path": "%s.%d" % (base, index)}
+                return note_guard(bridge, {"index": index,
+                                           "path": "%s.%d" % (base, index)})
             listing = ", ".join("%d:%r" % (i, n) for i, n in enumerate(names))
             raise ToolError("not_found", "no %s named %r" % (kind, spec),
                             hint="available: %s" % (listing or "none"))

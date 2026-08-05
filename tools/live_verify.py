@@ -17,10 +17,19 @@ import wave
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "server" / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from alberton_mcp import api                      # noqa: E402
 from alberton_mcp.bridge import Bridge            # noqa: E402
 from alberton_mcp.errors import ToolError         # noqa: E402
+import scratch                                   # noqa: E402
+
+# Every probe's scratch material is named "ZZ …" so that a run killed half-way
+# leaves something a human can recognise as junk and delete. This one used
+# "Alberton MCP verify", which reads like part of the set — and after a killed
+# run its leftovers sat in the user's own Alberton Multiverse looking native.
+SCRATCH_MIDI = "ZZ verify midi"
+SCRATCH_AUDIO = "ZZ verify audio"
 
 
 class Runner:
@@ -71,14 +80,16 @@ async def main():
             overview["counts"]["tracks"], overview["counts"]["scenes"],
             overview["tempo"], overview["signature"]))
 
+        await scratch.sweep(session, api)
+
         created = await api.create_midi_track(session,
-                                              name="Alberton MCP verify",
+                                              name=SCRATCH_MIDI,
                                               color="#FF8800")
         track_index = created["track"]["index"]
         # Live snaps track/clip colors to its palette; read-back shows what
         # it kept (e.g. #FF8800 -> #F66C03). Verified 2026-08-03.
         run.check("create_midi_track (palette snap tolerated)",
-                  created["track"]["name"] == "Alberton MCP verify"
+                  created["track"]["name"] == SCRATCH_MIDI
                   and isinstance(created["track"]["color"], str)
                   and created["track"]["color"].startswith("#"),
                   json.dumps(created))
@@ -273,7 +284,7 @@ async def main():
             per_bar, stats["max_polyphony"], stats["pitch"]["classes"]))
 
         created = await api.create_audio_track(session,
-                                               name="Alberton audio verify")
+                                               name=SCRATCH_AUDIO)
         audio_track_index = created["track"]["index"]
         with tempfile.TemporaryDirectory() as folder:
             wav = make_wav(Path(folder) / "alberton verify.wav")

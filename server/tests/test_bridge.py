@@ -7,7 +7,7 @@ from alberton_mcp.bridge import Bridge, BridgeUnreachable, WireError
 
 async def test_ping_handshake(fake, session):
     result = await session.bridge.request("ping")
-    assert result["contract"] == "1.1"
+    assert result["contract"] == "1.2"
     assert session.bridge.remote_versions["live"] == "12.4.3"
 
 
