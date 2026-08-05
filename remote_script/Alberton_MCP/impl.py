@@ -1,6 +1,6 @@
 # Alberton bridge implementation — executed from disk by __init__.py.
 #
-# Implements Layer A of docs/CONTRACT.md v1.1: NDJSON over 127.0.0.1:17853,
+# Implements Layer A of docs/CONTRACT.md v1.2: NDJSON over 127.0.0.1:17853,
 # eleven generic operations over LOM object paths, batch with undo-step
 # atomicity, subscriptions with coalesce-on-tick backpressure. Object stubs
 # carry identity as well as location, and answers are written ahead of events
@@ -29,7 +29,7 @@ HOST = "127.0.0.1"
 PORT = 17853
 
 CONTRACT_VERSION = "1.2"
-SCRIPT_VERSION = "0.3.0"
+SCRIPT_VERSION = "0.3.1"
 
 LINE_MAX = 16 * 1024 * 1024
 BATCH_MAX = 256
@@ -723,11 +723,15 @@ class Bridge(object):
         except Exception as exc:
             raise ProtocolError("live_error", "get_notes_extended: %s" % exc,
                                 path=params.get("path"))
-        notes = [self._note_to_wire(vector[i]) for i in range(len(vector))]
-        if len(notes) > NOTES_MAX:
+        count = len(vector)
+        if count > NOTES_MAX:
+            # Refused BEFORE encoding: the length is known already, and
+            # building a reply for a monster clip is main-thread work inside
+            # a single op, which no tick budget bounds.
             raise ProtocolError("too_large",
                                 "%d notes exceed the %d limit; narrow the region"
-                                % (len(notes), NOTES_MAX), path=params.get("path"))
+                                % (count, NOTES_MAX), path=params.get("path"))
+        notes = [self._note_to_wire(vector[i]) for i in range(count)]
         return {"notes": notes}
 
     def _make_note_spec(self, note):
@@ -897,7 +901,7 @@ class Bridge(object):
         sub_id = self._next_sub_id
         self._next_sub_id += 1
         sub = {"id": sub_id, "path": path, "obj": obj, "seq": 0, "dropped": 0,
-               "listeners": {}}
+               "overflow_pending": False, "listeners": {}}
         for prop, (adder, remover) in adders.items():
             callback = self._make_listener(sub_id, prop)
             adder(callback)
@@ -967,11 +971,24 @@ class Bridge(object):
                                 "path": sub["path"], "prop": prop, "value": value},
                        event_sub=sub_id)
         for sub in list(self._subs.values()):
-            if sub["dropped"]:
-                sub["seq"] += 1
-                dropped, sub["dropped"] = sub["dropped"], 0
-                self._send(client, {"event": "overflow", "sub": sub["id"],
-                                    "seq": sub["seq"], "dropped": dropped})
+            if not sub["dropped"] or client is None:
+                continue
+            # The notice bypasses the cap in _send (no event_sub), which is
+            # right — it is the one frame that must not be lost — but with no
+            # bound it grew the queue by one frame per sub per tick for as
+            # long as the consumer stalled. At most ONE notice per
+            # subscription now rides above the cap; the count keeps
+            # accumulating meanwhile and goes out in the next notice once the
+            # consumer drains below the cap. Worst case in the queue:
+            # OUTBOX_MAX + SUBS_MAX frames. Reviewed 2026-08-05.
+            if sub["overflow_pending"] and \
+                    client["events"].qsize() >= OUTBOX_MAX:
+                continue
+            sub["seq"] += 1
+            dropped, sub["dropped"] = sub["dropped"], 0
+            sub["overflow_pending"] = client["events"].qsize() >= OUTBOX_MAX
+            self._send(client, {"event": "overflow", "sub": sub["id"],
+                                "seq": sub["seq"], "dropped": dropped})
 
     # ---- dispatch --------------------------------------------------------------
 
@@ -1016,13 +1033,19 @@ class Bridge(object):
                 client = None
             if self._pending_rollback is not None:
                 pending, self._pending_rollback = self._pending_rollback, None
+                # The undo runs whether or not the requester is still
+                # connected: the failed batch mutated THIS set, and
+                # atomic-or-absent is a promise about the set, not about the
+                # reply. Until 2026-08-05 the undo was skipped when the client
+                # had vanished within the tick, and the half-applied batch
+                # stayed in the set.
+                try:
+                    undo_hint = self._song().undo()
+                    rolled_back = True
+                except Exception as exc:
+                    undo_hint = "undo failed: %s" % exc
+                    rolled_back = False
                 if client is not None and pending["gen"] == client["gen"]:
-                    try:
-                        undo_hint = self._song().undo()
-                        rolled_back = True
-                    except Exception as exc:
-                        undo_hint = "undo failed: %s" % exc
-                        rolled_back = False
                     self._send(client, {"id": pending["id"], "ok": True, "result": {
                         "results": pending["results"],
                         "rolled_back": rolled_back,

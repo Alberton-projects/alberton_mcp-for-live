@@ -137,8 +137,13 @@ def overflow_check(run):
         while time.time() < deadline:
             batch = read_frames(3.0)
             frames.extend(batch)
-            if not batch or any(f.get("event") == "overflow" for f in batch):
+            if any(f.get("event") == "overflow" for f in batch):
                 break
+            # An empty read is NOT the end: with a 4 KB receive buffer the
+            # backlog arrives in bursts, and the notice sits behind ~4096
+            # queued frames. The probe used to give up on the first quiet
+            # 3 s, a few hundred frames short of the notice it was looking
+            # for. Drain to the deadline. Closed 2026-08-05 (open item 2).
         overflows = [f for f in frames if f.get("event") == "overflow"]
         changes = [f for f in frames if f.get("event") == "change"]
         run.check("a stalled consumer gets overflow, not unbounded growth",
