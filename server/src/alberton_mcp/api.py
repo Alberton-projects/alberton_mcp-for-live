@@ -28,6 +28,23 @@ CLIP_MAP_LIMIT = 600
 # 'standard'. Above this many the answer falls back to bare names and says so,
 # the same bargain as the clip map. The busiest track in that set held 244.
 PARAM_DETAIL_LIMIT = 400
+# get_track walks into rack chains. Two round trips per nesting level, none on
+# a rack-free track; these bound a pathological set (a drum rack holds up to
+# 128 chains) rather than a sane one.
+RACK_WALK_DEPTH = 8
+RACK_WALK_LIMIT = 200
+# A Max for Live author's list- and blob-typed parameters (parameter_type 3 —
+# a live.step grid, a multislider) are absent from device.parameters entirely,
+# absent from the set's ParameterList, and carry no marker of their absence:
+# nine of one real device's twenty-four parameters were invisible and the
+# answer looked complete. Verified 2026-08-04 (HANDOFF §7). The honest fix is
+# to say so wherever a M4L device's parameters are reported.
+MAX_FOR_LIVE_NOTE = (
+    "this track has Max for Live devices (marked max_for_live). A M4L "
+    "author's list- and blob-typed parameters — a live.step grid, a "
+    "multislider — are invisible to Live's API, so those devices' parameter "
+    "lists and counts may be incomplete, and nothing on this side can tell. "
+    "What is listed is everything that is reachable.")
 BROWSER_MAX_ITEMS = 4000   # per category
 BROWSER_MAX_DEPTH = 8
 BROWSE_RESULT_LIMIT = 25
@@ -459,7 +476,8 @@ async def get_track(session, track, detail="standard"):
              + [(mixer + ".sends.%d" % i, ["name", "value", "display_value"])
                 for i in range(send_count)]
              + [(ref["path"] + ".devices.%d" % i,
-                 ["name", "class_name", "parameters"])
+                 ["name", "class_name", "parameters", "can_have_chains",
+                  "chains"])
                 for i in range(device_count)]
              + [(ref["path"] + ".clip_slots.%d.clip" % s,
                  ["name", "color", "length", "is_playing"])
@@ -471,10 +489,30 @@ async def get_track(session, track, detail="standard"):
     device_values = got[at:at + device_count]; at += device_count
     clip_rows = got[at:]
 
-    out["devices"] = [{"index": i, "name": (v or {}).get("name"),
-                       "class": (v or {}).get("class_name"),
-                       "parameter_count": _vec_length((v or {}).get("parameters"))}
-                      for i, v in enumerate(device_values)]
+    top = []
+    for i, v in enumerate(device_values):
+        v = v or {}
+        entry = {"index": i, "name": v.get("name"),
+                 "class": v.get("class_name"),
+                 "parameter_count": _vec_length(v.get("parameters"))}
+        if _scalar(v.get("can_have_chains")):
+            entry["rack"] = True
+        if str(_scalar(v.get("class_name")) or "").startswith("MxDevice"):
+            entry["max_for_live"] = True
+        top.append((entry, "%s.devices.%d" % (ref["path"], i), str(i),
+                    _vec_length(v.get("chains"))))
+    out["devices"] = [entry for entry, _path, _loc, _count in top]
+    # Reading `chains` on a non-rack raises inside Live, which arrives as a
+    # per-prop $error and counts as zero — so the walk starts only where a
+    # rack actually is, and a rack-free track pays nothing.
+    walked, walk_truncated = await _walk_racks(bridge, top)
+    if walk_truncated:
+        out["devices_note"] = (
+            "the rack walk stopped at %d devices / %d nesting levels; deeper "
+            "content exists but is not listed — reach it with slash locators "
+            "or lom_describe" % (RACK_WALK_LIMIT, RACK_WALK_DEPTH))
+    if any(entry.get("max_for_live") for entry, _path in walked):
+        out["max_for_live_note"] = MAX_FOR_LIVE_NOTE
     with_clip = [s for s, v in enumerate(clip_rows) if v]
     clip_values = [clip_rows[s] for s in with_clip]
 
@@ -497,8 +535,73 @@ async def get_track(session, track, detail="standard"):
                          "playing": values.get("is_playing")}
     out["clips"] = clips
     if detail == "full":
-        await _describe_parameters(bridge, ref["path"], out["devices"])
+        await _describe_parameters(bridge, walked)
     return out
+
+
+async def _walk_racks(bridge, top):
+    """Descend rack chains level by level, attaching structure to entries.
+
+    `top`: [(entry, lom_path, locator, chain_count)] for the track's
+    top-level devices. Two round trips per nesting level — the level's
+    chains, then the devices inside them — and none at all on a track
+    without racks. Every nested device carries the slash `locator` that
+    set_device_parameter and friends accept ("2/0/1" = device 2, chain 0,
+    device 1 — indices, so it stays exact whatever the names are).
+
+    Returns ([(entry, lom_path)] for every device seen, walk-truncated?).
+    """
+    seen = [(entry, path) for entry, path, _loc, _count in top]
+    frontier = [item for item in top if item[3]]
+    truncated = False
+    for _depth in range(RACK_WALK_DEPTH):
+        if not frontier or truncated:
+            break
+        chain_specs, chain_owners = [], []
+        for entry, path, loc, count in frontier:
+            entry["chains"] = []
+            for c in range(count):
+                chain_specs.append(("%s.chains.%d" % (path, c),
+                                    ["name", "devices"]))
+                chain_owners.append((entry, path, loc, c))
+        chain_values = await _gets(bridge, chain_specs)
+        device_specs, device_owners = [], []
+        for (entry, path, loc, c), values in zip(chain_owners, chain_values):
+            values = values or {}
+            chain = {"index": c, "name": _scalar(values.get("name")),
+                     "devices": []}
+            entry["chains"].append(chain)
+            for d in range(_vec_length(values.get("devices"))):
+                if len(seen) + len(device_specs) >= RACK_WALK_LIMIT:
+                    truncated = True
+                    break
+                nested_path = "%s.chains.%d.devices.%d" % (path, c, d)
+                device_specs.append((nested_path,
+                                     ["name", "class_name", "parameters",
+                                      "can_have_chains", "chains"]))
+                device_owners.append((chain, nested_path,
+                                      "%s/%d/%d" % (loc, c, d)))
+        nested_values = await _gets(bridge, device_specs)
+        frontier = []
+        for (chain, nested_path, locator), values in zip(device_owners,
+                                                         nested_values):
+            values = values or {}
+            entry = {"locator": locator,
+                     "name": _scalar(values.get("name")),
+                     "class": _scalar(values.get("class_name")),
+                     "parameter_count": _vec_length(values.get("parameters"))}
+            if _scalar(values.get("can_have_chains")):
+                entry["rack"] = True
+            if str(_scalar(values.get("class_name")) or "") \
+                    .startswith("MxDevice"):
+                entry["max_for_live"] = True
+            chain["devices"].append(entry)
+            seen.append((entry, nested_path))
+            count = _vec_length(values.get("chains"))
+            if count:
+                frontier.append((entry, nested_path, locator, count))
+    # Racks still on the frontier after the depth cap are truncation too.
+    return seen, truncated or bool(frontier)
 
 
 # What a caller needs before it can set a parameter: where the value may go,
@@ -507,29 +610,33 @@ PARAM_PROPS = ["name", "value", "min", "max", "is_quantized",
                "display_value", "is_enabled"]
 
 
-async def _describe_parameters(bridge, track_path, devices):
+async def _describe_parameters(bridge, devices):
     """Fill in each device's `parameters` — one batched read for the track.
+
+    `devices` is [(entry, lom_path)] for every device the rack walk saw,
+    nested ones included: a parameter three racks deep costs the same one
+    batch as one on the track, and the detail limit is a budget for the whole
+    track, not per device.
 
     `value_items` is deliberately not fetched: it raises on a parameter that is
     not quantized, and the bridge returns a vector as a stub anyway, so the
     names behind an enum still cost a `lom_get` on `<param>.value_items`.
     """
-    total = sum(d["parameter_count"] for d in devices)
+    total = sum(entry["parameter_count"] for entry, _path in devices)
     if total > PARAM_DETAIL_LIMIT:
         props, terse = ["name"], True
     else:
         props, terse = PARAM_PROPS, False
 
     specs, owners = [], []
-    for device_index, device in enumerate(devices):
-        for i in range(device["parameter_count"]):
-            specs.append(("%s.devices.%d.parameters.%d"
-                          % (track_path, device_index, i), props))
-            owners.append(device)
+    for entry, path in devices:
+        for i in range(entry["parameter_count"]):
+            specs.append(("%s.parameters.%d" % (path, i), props))
+            owners.append(entry)
     values = await _gets(bridge, specs)
 
-    for device in devices:
-        device["parameters"] = []
+    for entry, _path in devices:
+        entry["parameters"] = []
     for device, v in zip(owners, values):
         v = v or {}
         if terse:
@@ -554,8 +661,8 @@ async def _describe_parameters(bridge, track_path, devices):
                         "Read one with lom_get on "
                         "'<track>.devices.<i>.parameters.<j>' for its range."
                         % total)
-        for device in devices:
-            device["parameters_note"] = devices_note
+        for entry, _path in devices:
+            entry["parameters_note"] = devices_note
 
 
 PITCH_NAMES = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")

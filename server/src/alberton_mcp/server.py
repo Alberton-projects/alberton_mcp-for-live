@@ -77,12 +77,19 @@ async def get_track(track: Union[int, str], detail: str = "standard") -> dict:
     """One track in depth: mixer (volume/pan/sends with display strings),
     devices, clips.
 
-    detail 'full' adds every device parameter with what you need to set it:
-    name, current value, min, max, its reading in Live's own units, whether it
-    is stepped, and whether it is disabled (macro-mapped parameters cannot be
-    written). Above 400 parameters on one track it lists names only and says so.
-    An enum's step NAMES are not included — read <param>.value_items with
-    lom_get for those.
+    Racks are walked: a rack device carries `chains`, each chain its nested
+    devices, and every nested device a ready-to-use slash `locator` (e.g.
+    "2/0/1") that set_device_parameter and automate_parameter accept. Max
+    for Live devices are marked `max_for_live`; their list/blob parameters
+    (step grids, multisliders) are invisible to Live's API, so their
+    parameter lists may be incomplete — the answer says so when it applies.
+
+    detail 'full' adds every device parameter — nested ones included — with
+    what you need to set it: name, current value, min, max, its reading in
+    Live's own units, whether it is stepped, and whether it is disabled
+    (macro-mapped parameters cannot be written). Above 400 parameters on one
+    track it lists names only and says so. An enum's step NAMES are not
+    included — read <param>.value_items with lom_get for those.
 
     A track locator is an index (regular tracks only), an exact name, or one
     of the explicit forms "master" and "return:0" / "return:A-Reverb".
