@@ -21,7 +21,7 @@ in HANDOFF, the *spec* in CONTRACT.
 | Remote Script | `remote_script/Alberton_MCP/`, v0.3.1 |
 | Server | `server/`, package `alberton-mcp` 0.1.0, 46 tools, `mcp<2` pinned |
 | Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 — and the README says so, promising nothing more |
-| Open work | Three items. |
+| Open work | One item: the clean-install rehearsal. |
 | Published | No. Publication is deliberately the last step. |
 
 **Tests, all green.** Everything was re-verified 2026-08-05 after the review, against
@@ -33,7 +33,7 @@ bounded exactly as designed.
 
 | Suite | Needs Live | Checks |
 |---|---|---|
-| `server/tests/` (pytest) | no | 142 |
+| `server/tests/` (pytest) | no | 149 |
 | `tools/wire_probe.py` | yes | 36 |
 | `tools/live_verify.py` | yes | 23 |
 | `tools/lifecycle_probe.py` | yes | 23 (+4 manual) |
@@ -133,15 +133,7 @@ Learned by getting it wrong; none of it is obvious from the code.
 
 ## Open — decided but not built
 
-1. **`get_track(detail='full')` cannot see inside a rack.** It reports the top-level
-   devices' parameters and stops. Chasing a fault down a real chain — sequencer, [PITCH],
-   receiver, plugin, some of them inside racks — meant hand-rolling a walk over
-   `…devices.N.chains.M.devices.K`. The LOM can answer the question; no tool here asks it.
-2. **Nothing tells a caller that a parameter exists but cannot be read.** A M4L author's
-   list-typed parameter is simply absent from `device.parameters` — nine of the Kit
-   Selector's twenty-four are — and the answer looks complete. A count, or a note, would
-   at least say something is missing.
-3. **Clean-install rehearsal** — nobody has ever followed the README from nothing, and
+1. **Clean-install rehearsal** — nobody has ever followed the README from nothing, and
    it is the last thing between here and publication. The server README's Claude Desktop
    snippet still carries this machine's absolute paths; that is part of this item.
 
@@ -163,6 +155,20 @@ written to a frozen track. None of them were predicted.
 ---
 
 ## Log
+
+### 2026-08-05 — into the racks, and honest about what cannot be seen
+
+- `c56c0b0` **`get_track` walks rack chains** — two round trips per nesting level, none
+  on a rack-free track — and every nested device carries the index-based slash locator
+  (`"1/0/8/0/4"`) that `set_device_parameter` already takes. `full` reads nested
+  parameters in the same one batch as top-level ones, under the same 400-parameter
+  track budget; the walk is bounded (200 devices, 8 levels) and says when it stops.
+  **Max for Live devices are marked `max_for_live`** and a track holding any carries a
+  note that their list/blob parameters are invisible to the LOM and the lists may be
+  incomplete — the honest answer, since the LOM offers no way to know what is missing.
+  Verified read-only on the loaded set: the drums group's FX rack opens two levels —
+  eight sub-racks, a m4l-flagged Gated Delay inside its GATE rack — and MIDI REC's two
+  Alberton devices are flagged with the note. 149 unit tests; open items 1 and 2 close.
 
 ### 2026-08-05 — the review, and the guard rebuilt
 

@@ -279,7 +279,7 @@ Conventions for every tool:
 | Tool | Params | Returns |
 |---|---|---|
 | `session_overview` | `detail?` | tempo, time signature, scale (name, root), playing state, track list (index, name, color, type, mute/solo, device names), named scenes. `standard` includes the per-slot clip map only while the set is small (≤600 slots); above that it says so and points at `get_track`, because every slot costs one wire read. `full` always pays, and adds returns and mixer displays. Measured on a real 29-track/180-scene set: `standard` 9.6 KB, `full` 57 KB |
-| `get_track` | `track, detail?` | track props, mixer (volume, pan, sends — normalized and dB/display), devices with parameter names, clip slots |
+| `get_track` | `track, detail?` | track props, mixer (volume, pan, sends — normalized and dB/display), devices and clip slots. Rack chains are walked (bounded at 200 devices / 8 levels, stated when hit); every nested device carries a ready slash locator ("2/0/1"). Max for Live devices are marked `max_for_live`, and a track holding any carries a note: their list/blob parameters are invisible to the LOM, so the lists may be incomplete. `full` adds every parameter's value, range, display reading, stepped and disabled flags — nested devices included, under one 400-parameter budget per track |
 | `get_clip` | `clip, include_notes?: false` | clip props (name, color, length, loop, signature, playing state) and optionally notes |
 | `get_notes` | `clip, from_time?, time_span?, from_pitch?, pitch_span?` | note array (A.6 shape) |
 | `get_changes` | `since?: seq` | coalesced change feed from active watches (B.6) with per-event seq; empty array if none |
