@@ -21,7 +21,7 @@ in HANDOFF, the *spec* in CONTRACT.
 | Remote Script | `remote_script/Alberton_MCP/`, v0.2.1 |
 | Server | `server/`, package `alberton-mcp` 0.1.0, 46 tools, `mcp<2` pinned |
 | Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 — and the README says so, promising nothing more |
-| Open work | One item: the clean-install rehearsal. Everything else decided has been built. |
+| Open work | Four items. The first — a name locator writing to whatever now sits at that index — is the only one that can lose a user's work. |
 | Published | No. Publication is deliberately the last step. |
 
 **Tests, all green.** Everything needing Live was last run 2026-08-04 against the loaded
