@@ -43,6 +43,24 @@ against both that and an empty set.
 
 ---
 
+## If you are reviewing this
+
+Start here, then `docs/HANDOFF.md` for why things are the way they are and what Live was
+actually observed to do. Where to look hardest:
+
+- **Everything dated 2026-08-04 landed in one long session and has had one pair of eyes.**
+  That is most of contract 1.2, the identity guard in `_run_atomic`, the `expect` op in
+  `impl.py`, and the `get_track` rewrite.
+- **The guard's invalidation rule is the subtle part.** A name resolution records the
+  object's identity on the bridge; `_run_atomic` consumes the set and marks it stale; the
+  next resolution clears it. The rule exists so a read that resolved a name cannot make a
+  later write fail — `test_stale_locator.py` pins that case, but the reasoning deserves a
+  second reader.
+- **Four of five diagnoses made that day were wrong before they were measured** (see the
+  table below). Treat any claim here that is not attached to a measurement as a guess.
+- Nothing in `tools/` is CI: the probes need Live open with the Control Surface selected,
+  and only one client may hold the socket at a time.
+
 ## How to work on this
 
 Learned by getting it wrong; none of it is obvious from the code.
