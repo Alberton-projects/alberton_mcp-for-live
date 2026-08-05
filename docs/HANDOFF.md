@@ -406,12 +406,11 @@ disagreeing — observed in the wild: sequencer lanes playing with their Active 
 showing off, unfixable from the UI because the toggle already held the right value.
 **[verified 2026-08-04, Live 12.4.3, against four Step Sequencer instances]**
 
-`get_track(detail='full')` returns device parameter **names only** (`api.py`, the `_gets`
-over `…parameters.%d` asks for `name`). The docstring of `set_device_parameter` tells the
-caller to look there for a parameter's `[min, max]`, which is not on offer — the range
-needs a `lom_get` per parameter, one round trip each. Either the docstring or the tool is
-wrong; the tool is the better thing to fix, since choosing a legal value is the first
-thing a caller needs. **[found 2026-08-04]**
+`get_track(detail='full')` returned device parameter **names only**, while the docstring
+of `set_device_parameter` told the caller to look there for a parameter's `[min, max]` —
+a gap nothing tested. **[found 2026-08-04, fixed the same day — `ec43c7e`]**: `full` now
+carries each parameter's value, range, display reading, stepped flag and enabled flag,
+in one batched read per track.
 
 ---
 

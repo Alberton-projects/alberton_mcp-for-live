@@ -43,12 +43,14 @@ outcome are welcome.
 
 ## Testing
 
-110 unit tests run without Ableton, against an in-process fake of the bridge that speaks
-the real wire protocol over real TCP — that is the CI suite. Seven further probes run
+142 unit tests run without Ableton, against an in-process fake of the bridge that speaks
+the real wire protocol over real TCP — that is the CI suite. Eight further probes run
 against a live instance and are what actually found the bugs: contract compliance,
 end-to-end tool behaviour, connection lifecycle and robustness, every tool in the
-catalogue with a coverage report, degenerate material, the declared limits, and
-measurement under concurrent human use. See [server/README.md](server/README.md).
+catalogue with a coverage report, calls shaped the way a model gets them wrong,
+degenerate material, the declared limits, and measurement under concurrent human use —
+plus a read-only report of what a set costs to read. See
+[server/README.md](server/README.md).
 
 ## Architecture
 

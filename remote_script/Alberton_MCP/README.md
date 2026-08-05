@@ -37,7 +37,7 @@ With Live running and the surface selected:
 python3 tools/wire_probe.py
 ```
 
-34 contract-compliance checks; tempo is restored and the probe's scratch track is
+36 contract-compliance checks; tempo is restored and the probe's scratch track is
 deleted afterwards.
 
 ## Iterate without restarting Live (development only)

@@ -20,11 +20,13 @@ See `docs/HANDOFF.md` for why.
 
 ## Hard rules
 
-**The Remote Script is the part that never changes.** Live loads Remote Scripts only at
-startup, so every edit costs a full Live restart and a lost session. The script therefore
-exposes a small set of *generic* operations over LOM object paths — read a property, write
-a property, call a method, read/write notes, run a batch, subscribe to changes — never a
-fixed vocabulary of musical verbs. Adding a capability must be a server-side change.
+**The Remote Script never grows a vocabulary.** It exposes a small set of *generic*
+operations over LOM object paths — read a property, write a property, call a method,
+read/write notes, run a batch, subscribe to changes — never musical verbs. Adding a
+capability must be a server-side change. Fixes and improvements to the bridge itself
+are fine (the user has said so explicitly, twice) and cost one Control Surface toggle,
+not a Live restart: `__init__.py` is a frozen loader that re-executes `impl.py` from
+disk. After editing, copy `impl.py` to the installed location and ask for the toggle.
 
 **All intelligence lives in the MCP server.** The Python inside Live is an embedded
 interpreter with no third-party packages. Anything that needs real computation, caching,

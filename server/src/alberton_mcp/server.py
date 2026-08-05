@@ -403,7 +403,8 @@ async def stop_all_clips(track: Optional[Union[int, str]] = None) -> dict:
 async def browse(query: str, category: Optional[str] = None,
                  refresh: bool = False) -> dict:
     """Search Live's browser for loadable items (instruments, sounds, drums,
-    audio_effects, midi_effects, plugins, samples, packs, user_library).
+    audio_effects, midi_effects, plugins, samples, packs, user_library,
+    max_for_live).
     Returns names + uris for load_device. First search per category walks the
     tree and may take a few seconds; later ones hit the cache. refresh=true
     re-walks — do that after installing a pack or adding user content."""

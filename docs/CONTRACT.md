@@ -1,9 +1,11 @@
 # Contract — wire protocol and MCP tool catalogue
 
-Version 1.1 — 2026-08-03. Two additive changes to Layer A after testing found their
-absence: `$obj` stubs carry `ptr`, and answers are written ahead of events. Both are
-backward compatible; a 1.0 client ignoring `ptr` behaves as before. Version 1.0 was
-frozen 2026-08-02 after user review. Designed against
+Version 1.2 — 2026-08-04. One additive change to Layer A: the `expect` op (§A.6),
+the guard that makes "act on the object I named" enforceable inside a batch.
+Migration: a 1.1 script simply lacks the op; a server wanting the guarantee against
+an older script must fall back to reading the identity and undoing after the fact.
+Version 1.1 (2026-08-03) added `ptr` on `$obj` stubs and answers-before-events, both
+backward compatible. Version 1.0 was frozen 2026-08-02 after user review. Designed against
 `docs/lom-inventory.md` (Live 12.4.3, embedded Python 3.11.6). Decisions of record:
 subscriptions ship in v1; the generic LOM escape hatches are exposed to the model for
 read and write; v1 write scope is Session-first (Arrangement-native writing is v1.1).
@@ -82,6 +84,9 @@ untranslated and are documented per tool.
 Colors on the wire are Live's integer RGB. Layer B accepts/returns `#RRGGBB` and
 converts.
 
+Outbound values with no JSON form (a plugin parameter can read as NaN) are scrubbed
+to `null` — Python's encoder would otherwise write bare words that are not JSON.
+
 ### A.5 Path grammar
 
 ```
@@ -123,6 +128,16 @@ silent clamp (e.g. tempo limits) is thereby visible. Partial failure fails the o
 **`call`** `{path, method, args: [...], kwargs: {...}}` → `{"value": <encoded>}`.
 Arguments accept the same encoding as A.4 in reverse; `$obj` references are resolved to
 live objects before the call. Methods that return LOM objects return `$obj` stubs.
+
+**`expect`** `{path, prop, equals}` → `{"ok_expected": <value>}`. Fails with
+`expectation_failed` unless the property still holds that value. Its only purpose
+is to sit in front of a write **inside the same batch**: a batch runs in one
+main-thread slice, in order, and stops at the first failure, so an expect that
+fails means nothing after it runs at all. That is what makes "act on the object I
+named" true rather than "act on whatever is at the index that object had when I
+looked" — a human dragging a track in Live cannot slip in between, because Live's
+UI runs on that same thread. Added in contract 1.2; a server talking to an older
+script must fall back to reading the identity and undoing after the fact.
 
 **`get_notes`** `{path, from_time?, time_span?, from_pitch?, pitch_span?}` →
 `{"notes": [note, ...]}` for a MIDI clip. Defaults: the whole clip, pitches 0–127.
@@ -197,16 +212,6 @@ accepts them, which is why this has to be said — and handing one to Live stops
 its main thread outright, with no exception for the script to catch. Since the
 line never parses, the refusal carries `"id": null`.
 
-**`expect`** `{path, prop, equals}` → `{"ok_expected": <value>}`. Fails with
-`expectation_failed` unless the property still holds that value. Its only purpose
-is to sit in front of a write **inside the same batch**: a batch runs in one
-main-thread slice, in order, and stops at the first failure, so an expect that
-fails means nothing after it runs at all. That is what makes "act on the object I
-named" true rather than "act on whatever is at the index that object had when I
-looked" — a human dragging a track in Live cannot slip in between, because Live's
-UI runs on that same thread. Added in contract 1.2; a server talking to an older
-script must fall back to reading the identity and undoing after the fact.
-
 Closed code set (v1): `expectation_failed`, `bad_request`, `unknown_op`, `path_not_found`,
 `property_not_found`, `property_read_only`, `method_not_found`, `type_error`,
 `not_a_midi_clip`, `live_error` (C++ exception surfaced; `message` carries its text),
@@ -230,7 +235,7 @@ the UI for longer than one op; the 16 MiB and notes-count limits bound op cost.
 | Ops per batch | 256 |
 | Notes per `edit_notes` / `get_notes` reply | 20 000 |
 | Active subscriptions | 128 |
-| Event outbox | 4 096 frames, then `overflow` |
+| Event outbox | 4 096 frames, then `overflow` — at most one notice per subscription rides above the cap, so the queue is bounded at 4 096 + 128 |
 | Server-side request timeout | 15 s (`live_error`/`internal` after) |
 
 ---
@@ -246,8 +251,10 @@ Conventions for every tool:
   families count from zero, so a bare index could not say which), an exact name, or
   the explicit forms `"master"` and `"return:0"` / `"return:A-Reverb"`. Returns and the
   master also answer to their own names; Live 12.4.3 calls the master track **"Main"**.
-  A regular track wins a name collision. Ambiguous or missing names are structured
-  errors listing candidates from all three families.
+  A regular track wins a name collision, with one reservation: `"master"`/`"main"`
+  (case-insensitive) and the `"return:"` prefix always resolve to the master and the
+  returns, so a regular track named `Main` must be addressed by index. Ambiguous or
+  missing names are structured errors listing candidates from all three families.
   `device` accepts an index, an exact name, or a slash path descending into racks,
   alternating device and chain: `"Bass Raw/0/Operator"`. Macro controls are ordinary
   parameters addressed by name.
@@ -257,8 +264,9 @@ Conventions for every tool:
   canonical locator of what it created. Every mutating tool is one undo step; `batch`
   makes several tools one step.
 - **Errors**: `{code, message, hint?}` mirroring A.7 plus `ambiguous_name`,
-  `not_found`, `invalid_argument`. `hint` is actionable ("song has 4 tracks, indices
-  0–3").
+  `not_found`, `invalid_argument`, `conflict` (the target already exists or is
+  occupied) and `bridge_unreachable` (Live is closed or the Control Surface is not
+  selected). `hint` is actionable ("song has 4 tracks, indices 0–3").
 - **Context economy**: overview tools accept `detail: "minimal" | "standard" | "full"`
   (default `standard`) and never dump note arrays unless asked. Since v1.1, note-bearing
   tools also accept `summary` / `note_summary`: statistics (count, pitch range and
@@ -292,7 +300,7 @@ a script change and usually without a server release.
 
 | Tool | Params |
 |---|---|
-| `set_song` | any of `tempo (20–999)`, `signature_numerator`, `signature_denominator`, `scale_name`, `root_note (0–11)`, `groove_amount`, `metronome` |
+| `set_song` | any of `tempo (20–999)`, `signature_numerator`, `signature_denominator`, `scale_name`, `root_note (0–11)`, `scale_mode`, `groove_amount`, `metronome`, `tempo_follower_enabled` |
 | `transport` | `action: "play" \| "stop" \| "continue"`, `position?` (song beats; also usable alone to move the playhead) |
 
 ### B.4 Tracks, clips, notes, scenes (Session-first)
@@ -319,8 +327,8 @@ a script change and usually without a server release.
 
 | Tool | Params |
 |---|---|
-| `browse` | `query, category?: instruments\|drums\|audio_effects\|midi_effects\|sounds` — server-side index over the browser tree; returns loadable URIs with human names |
-| `load_device` | `track, uri, position?` |
+| `browse` | `query, category?: instruments\|sounds\|drums\|audio_effects\|midi_effects\|plugins\|samples\|packs\|user_library\|max_for_live` — server-side index over the browser tree; returns loadable URIs with human names |
+| `load_device` | `track, uri` — loads at the position Live gives a loaded item; repositioning is not in the LOM |
 | `set_device_parameter` | `track, device (index \| name), parameter (index \| name), value (normalized \| {"display": "..."} )` → read-back incl. display string |
 
 ### B.6 Watches (Layer A subscriptions, surfaced)
@@ -360,6 +368,11 @@ The clip locator became polymorphic — `{track, slot}` (Session), `{track, time
 A clip's Arrangement position is **read-only** in the LOM (`start_time`/`end_time` have
 no setter), so "move" is delete-and-recreate. Recorded rather than worked around: an
 `insert`-style shuffle would have to rewrite every clip after it.
+
+Exception to the one-undo-step convention, documented per tool as the conventions
+require: `create_arrangement_clip` and `import_audio_clip` are **two** undo steps —
+Live returns the new clip as a path-less stub, so it must exist before it can be
+found, named and filled.
 
 ### B.8 Structure made visible
 
