@@ -259,7 +259,9 @@ async def delete_track(track: Union[int, str]) -> dict:
 async def duplicate_track(track: Union[int, str]) -> dict:
     """Duplicate a track with its devices and clips. The copy lands
     immediately after the original, so every later track shifts up by one —
-    re-read indices (or use names) before addressing them again."""
+    re-read indices (or use names) before addressing them again. The
+    read-back is positional (original index + 1); if a human is editing at
+    the same moment, confirm by name."""
     return await _run(api.duplicate_track, track=track)
 
 
@@ -528,7 +530,9 @@ async def create_arrangement_clip(track: Union[int, str], time: float,
     needed. `time` is song-absolute beats, `length` is beats; note times
     inside `notes` stay clip-relative (0 = the clip's own start), exactly as
     in create_clip. Refuses to overlap an existing clip rather than letting
-    Live silently trim it."""
+    Live silently trim it. Unlike create_clip this is TWO undo steps (the
+    clip must exist before it can be found, named and filled), so Cmd-Z in
+    Live first empties it, then removes it."""
     return await _run(api.create_arrangement_clip, track=track, time=time,
                       length=length, name=name, color=color, notes=notes,
                       signature_numerator=signature_numerator,
@@ -544,7 +548,9 @@ async def import_audio_clip(track: Union[int, str], file_path: str,
     """Import an audio file onto an audio track: give `time` (song beats, into
     the Arrangement) or `slot` (Session scene index) — exactly one. file_path
     must be absolute; it is checked for existence, type and readability before
-    Live is asked, so mistakes come back as clear errors."""
+    Live is asked, so mistakes come back as clear errors. When name/color are
+    given this is TWO undo steps (the clip must exist before it can be
+    named)."""
     return await _run(api.import_audio_clip, track=track, file_path=file_path,
                       time=time, slot=slot, name=name, color=color)
 

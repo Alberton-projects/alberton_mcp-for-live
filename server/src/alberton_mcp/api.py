@@ -819,9 +819,17 @@ async def _c_lom_set(session, params):
     described = await session.bridge.request("describe", path=params.get("path"))
     class_name = described.get("class")
     for prop in params.get("props") or {}:
-        if inventory.writable(class_name, prop) is False:
+        known = inventory.writable(class_name, prop)
+        if known is False:
             raise ToolError("property_read_only",
                             "%s.%s is read-only" % (class_name, prop))
+        # Same strictness as the direct lom_set: inside a batch this was
+        # quietly laxer and let unknown props through to fail on the wire.
+        if known is None and inventory.known_class(class_name):
+            raise ToolError("property_not_found",
+                            "%s has no property '%s' in the inventory"
+                            % (class_name, prop),
+                            hint="lom_describe the object to see its props")
     return [{"op": "set", "path": params["path"], "props": params["props"]}]
 
 
@@ -1087,6 +1095,15 @@ async def _c_quantize_clip(session, params):
 
 async def _c_fire_clip(session, params):
     ref = await resolve.resolve_clip(session.bridge, params.get("clip"))
+    if "slot_path" not in ref:
+        # An Arrangement locator resolves fine but has no slot to fire; the
+        # KeyError this used to raise was the one unstructured failure in the
+        # catalogue. Found 2026-08-05.
+        raise ToolError("invalid_argument",
+                        "fire_clip launches Session slots; an Arrangement "
+                        "clip cannot be fired",
+                        hint="use transport(action='play', position=%s) to "
+                             "play from that clip" % ref.get("start"))
     return [{"op": "call", "path": ref["slot_path"], "method": "fire"}]
 
 
@@ -1366,17 +1383,43 @@ async def quantize_clip(session, clip, grid, amount=1.0):
     return {"quantized": True, "grid": grid, "amount": amount}
 
 
+async def _scene_readback(bridge, index, expect_name=None):
+    """Read a freshly created scene back, and make sure it is really ours.
+
+    Same race as _track_readback: the index came from a count taken before
+    the create, and a human inserting or deleting a scene at that moment
+    shifts it. Tracks got this verification on 2026-08-03; scenes did not
+    until the 2026-08-05 review noticed the asymmetry.
+    """
+    values = (await _gets(bridge, [("song.scenes.%d" % index,
+                                    ["name", "color"])]))[0] or {}
+    if expect_name and values.get("name") != expect_name:
+        count = await resolve.vec_len(bridge, "song", "scenes")
+        names = await resolve.names_of(bridge, "song.scenes", count)
+        matches = [i for i, name in enumerate(names) if name == expect_name]
+        if len(matches) == 1:
+            index = matches[0]
+            values = (await _gets(bridge, [("song.scenes.%d" % index,
+                                            ["name", "color"])]))[0] or {}
+        else:
+            raise ToolError("conflict",
+                            "the scene was created but the set changed "
+                            "underneath: %r is not at index %d"
+                            % (expect_name, index),
+                            hint="something else added or removed a scene at "
+                                 "the same time; re-read session_overview")
+    return {"index": index, "name": values.get("name"),
+            "color": colors.to_hex(values.get("color"))}
+
+
 async def create_scene(session, index=-1, name=None, color=None):
     ops = await _c_create_scene(session, {"index": index, "name": name,
                                           "color": color})
     await _run_atomic(session.bridge, ops, "create_scene")
     scene_count = await resolve.vec_len(session.bridge, "song", "scenes")
     new_index = scene_count - 1 if index == -1 else int(index)
-    values = await _gets(session.bridge,
-                         [("song.scenes.%d" % new_index, ["name", "color"])])
-    values = values[0] or {}
-    return {"scene": {"index": new_index, "name": values.get("name"),
-                      "color": colors.to_hex(values.get("color"))}}
+    return {"scene": await _scene_readback(session.bridge, new_index,
+                                           expect_name=name)}
 
 
 async def set_scene(session, scene, name=None, color=None):

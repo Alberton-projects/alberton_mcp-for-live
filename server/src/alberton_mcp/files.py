@@ -29,10 +29,15 @@ def validate_audio_path(path):
     """Return the normalized absolute path, or raise a structured ToolError."""
     if not isinstance(path, str) or not path.strip():
         raise ToolError("invalid_argument", "file_path must be a non-empty string")
-    expanded = os.path.abspath(os.path.expanduser(path.strip()))
+    expanded = os.path.expanduser(path.strip())
+    # Checked BEFORE abspath: abspath makes any path absolute against the
+    # server's own cwd, which turned this refusal into dead code and quietly
+    # accepted relative paths resolved against a directory the caller never
+    # chose. Found 2026-08-05.
     if not os.path.isabs(expanded):
         raise ToolError("invalid_argument",
                         "file_path must be absolute, got %r" % path)
+    expanded = os.path.abspath(expanded)
     if not os.path.exists(expanded):
         parent = os.path.dirname(expanded)
         hint = ("the folder %r does not exist either" % parent
