@@ -1067,7 +1067,11 @@ async def _c_quantize_clip(session, params):
     amount = _require_number(params.get("amount", 1.0), "amount", lo=0.0, hi=1.0)
     enum_name = None
     for value, name in _GRID_ENUMS:
-        if abs(grid - value) < 1e-6:
+        # 5e-3, not 1e-6: the docstring advertises the four-decimal forms
+        # 0.3333 and 0.1667, which sit 3.3e-5 from the exact triplet values —
+        # a tighter tolerance refused the very numbers its own hint listed.
+        # Neighbouring grids are at least 0.04 apart, so this is unambiguous.
+        if abs(grid - value) < 5e-3:
             enum_name = name
             break
     if enum_name is None:
