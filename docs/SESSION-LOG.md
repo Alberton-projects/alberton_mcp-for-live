@@ -13,24 +13,25 @@ in HANDOFF, the *spec* in CONTRACT.
 
 ---
 
-## Current state — 2026-08-04
+## Current state — 2026-08-05
 
 | | |
 |---|---|
 | Contract | 1.2 (additive; major version is what must match) |
-| Remote Script | `remote_script/Alberton_MCP/`, v0.3.0 |
+| Remote Script | `remote_script/Alberton_MCP/`, v0.3.1 — installed, but Live runs 0.3.0 in memory until the next Control Surface toggle |
 | Server | `server/`, package `alberton-mcp` 0.1.0, 46 tools, `mcp<2` pinned |
 | Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 — and the README says so, promising nothing more |
-| Open work | Five items. The first — an overflow notice that the overflow itself can suppress — is the only one in the Remote Script. |
+| Open work | Three items, plus one transient: run `wire_probe` and `limits_probe` against script 0.3.1 once it is toggled in. |
 | Published | No. Publication is deliberately the last step. |
 
-**Tests, all green.** Everything needing Live was last run 2026-08-04 against the loaded
-29-track / 181-scene *Alberton Multiverse*, except `malformed_probe`, which is green
-against both that and an empty set.
+**Tests, all green.** The server was re-verified 2026-08-05 after the review's guard
+rework, against the loaded 29-track / 181-scene *Alberton Multiverse*: `live_verify`
+23/23 and `functional_suite` 53/53 with 46/46 tools. `wire_probe` 36/36 ran the same
+day against script 0.3.0; 0.3.1 pends the toggle.
 
 | Suite | Needs Live | Checks |
 |---|---|---|
-| `server/tests/` (pytest) | no | 135 |
+| `server/tests/` (pytest) | no | 142 |
 | `tools/wire_probe.py` | yes | 36 |
 | `tools/live_verify.py` | yes | 23 |
 | `tools/lifecycle_probe.py` | yes | 23 (+4 manual) |
@@ -46,18 +47,19 @@ against both that and an empty set.
 ## If you are reviewing this
 
 Start here, then `docs/HANDOFF.md` for why things are the way they are and what Live was
-actually observed to do. Where to look hardest:
+actually observed to do. The 2026-08-04 work got its second pair of eyes on 2026-08-05 —
+a full-repository review that demonstrated five defects against the fake bridge before
+touching code, fixed the same day (see the log entry). What is least examined now:
 
-- **Everything dated 2026-08-04 landed in one long session and has had one pair of eyes.**
-  That is most of contract 1.2, the identity guard in `_run_atomic`, the `expect` op in
-  `impl.py`, and the `get_track` rewrite.
-- **The guard's invalidation rule is the subtle part.** A name resolution records the
-  object's identity on the bridge; `_run_atomic` consumes the set and marks it stale; the
-  next resolution clears it. The rule exists so a read that resolved a name cannot make a
-  later write fail — `test_stale_locator.py` pins that case, but the reasoning deserves a
-  second reader.
-- **Four of five diagnoses made that day were wrong before they were measured** (see the
-  table below). Treat any claim here that is not attached to a measurement as a guess.
+- **The contextvars guard scope is the freshest code** (`529b098`). Its concurrency
+  claim rests on task-copy semantics plus one gather test; the sequential cases are
+  pinned hard, including the two that the old test suite could not see.
+- **Script 0.3.1's overflow bound has no unit coverage** — the script side never does —
+  and is verified only by `limits_probe` against a live instance.
+- **The review confirmed the house rule the hard way**: the open item describing the
+  overflow defect attributed it to a suppression mechanism that never existed in any
+  committed version. Treat any claim here that is not attached to a measurement as a
+  guess — including claims about what the code does.
 - Nothing in `tools/` is CI: the probes need Live open with the Control Surface selected,
   and only one client may hold the socket at a time.
 
@@ -129,29 +131,17 @@ Learned by getting it wrong; none of it is obvious from the code.
 
 ## Open — decided but not built
 
-1. **The overflow notice is subject to the limit it exists to report.** `_send` drops
-   events once the outbox reaches `OUTBOX_MAX`, and `_flush_subscriptions` then reports
-   the drops with another `_send` carrying `event_sub` — which hits the same full-queue
-   check and is dropped in turn. The notice only gets out once the consumer has drained
-   the queue below the cap, so whether it arrives at all is a race between the drain and
-   the ticks still producing. `limits_probe` failed once and passed twice on the same
-   build for exactly this reason. Fix: keep at most one outstanding overflow notice per
-   subscription and let that one bypass the cap — bounded at `OUTBOX_MAX + 128`, and it
-   is the one frame that must not be lost. Remote Script change.
-2. **`limits_probe` gives up on the first empty read.** Its drain loop breaks when a
-   3-second read returns nothing, which on a slow socket can happen a few hundred frames
-   short of the notice. Even with the bridge fixed, it should drain to the deadline.
-
-3. **`get_track(detail='full')` cannot see inside a rack.** It reports the top-level
+1. **`get_track(detail='full')` cannot see inside a rack.** It reports the top-level
    devices' parameters and stops. Chasing a fault down a real chain — sequencer, [PITCH],
    receiver, plugin, some of them inside racks — meant hand-rolling a walk over
    `…devices.N.chains.M.devices.K`. The LOM can answer the question; no tool here asks it.
-4. **Nothing tells a caller that a parameter exists but cannot be read.** A M4L author's
+2. **Nothing tells a caller that a parameter exists but cannot be read.** A M4L author's
    list-typed parameter is simply absent from `device.parameters` — nine of the Kit
    Selector's twenty-four are — and the answer looks complete. A count, or a note, would
    at least say something is missing.
-5. **Clean-install rehearsal** — nobody has ever followed the README from nothing, and
-   it is the last thing between here and publication.
+3. **Clean-install rehearsal** — nobody has ever followed the README from nothing, and
+   it is the last thing between here and publication. The server README's Claude Desktop
+   snippet still carries this machine's absolute paths; that is part of this item.
 
 Everything else on this list is done. Testing found, in order: the stringified-locator
 bug, twelve unusable tool descriptions, a stale watch registry, a `gone` event that never
@@ -171,6 +161,43 @@ written to a frozen track. None of them were predicted.
 ---
 
 ## Log
+
+### 2026-08-05 — the review, and the guard rebuilt
+
+- **Full-repository review on Fable 5** — the model switch was made for exactly this.
+  Five defects, every one demonstrated against the project's own fake bridge before any
+  diagnosis was trusted, and 0/5 reproduce after the fixes:
+- `529b098` **The guard belonged to the call, not the bridge.** As shared bridge state
+  it leaked out of read-only calls — `get_track("Bass")`, Bass deleted, and an unrelated
+  `set_track` *by index* failed with an error about Bass — and a guard whose index had
+  vanished at the tail fell through the expectation_failed-only check into a
+  success-shaped empty answer for a write that never ran. Two parallel calls could also
+  consume each other's guards. Guards now live in a per-call `contextvars` scope opened
+  by `server._run`; any failed probe raises `not_found`; and `song_batch`,
+  `set_device_parameter` and `duplicate_clip_to_arrangement` — which had **no guard at
+  all** — are covered. The old leak test wrote by index to the read's own untouched
+  track, so it pinned the benign case; the new tests pin the deletion, the tail
+  deletion, both newly guarded tools and parallel isolation. 142 unit tests.
+- `ba96c9c` **`quantize_clip` refused the grids its own hint advertises** — tolerance
+  1e-6 against the 3.3e-5 error of the documented 0.3333/0.1667. Unseen because every
+  suite quantizes at 0.25.
+- `a0964f1` Small hardenings: the dead `isabs` check in audio import, `fire_clip`'s one
+  unstructured KeyError, `create_scene`'s unverified read-back (tracks had the guard
+  since 2026-08-03, scenes did not), `lom_set`-inside-`song_batch` laxness.
+- `23aae9d` **Script 0.3.1.** A failed batch's deferred rollback now runs even when the
+  requester vanished within the tick — atomic-or-absent is a promise about the set, not
+  the reply. The overflow notice is bounded at one outstanding per subscription: the old
+  open item blamed a suppression mechanism that **never existed in any committed
+  version** — the notice always bypassed the cap, without bound, and sat behind ~4 096
+  queued frames where the probe's early-exit drain never reached it. `get_notes` checks
+  its limit before encoding. `limits_probe` now drains to its deadline (old open item 2).
+- `3f9cb55` **Docs match the code**: CONTRACT headed 1.2 with `expect` in A.6, counts
+  current in all three READMEs, the master-name reservation and the two-undo-step
+  exception written down, CLAUDE.md's script rule reworded to what it always meant —
+  no vocabulary in the script, but fixes are fine and cost one toggle.
+- Verified after the rework against the loaded *Alberton Multiverse*: `live_verify`
+  23/23, `functional_suite` 53/53 with 46/46 tools, `wire_probe` 36/36 (against 0.3.0;
+  0.3.1 pends the Control Surface toggle, then `wire_probe` and `limits_probe` again).
 
 ### 2026-08-04 — eight waits became three
 
