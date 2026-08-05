@@ -156,6 +156,25 @@ written to a frozen track. None of them were predicted.
 
 ## Log
 
+### 2026-08-05 — the second LOM dump: theory and evidence stop looking alike
+
+- `3d960af` `70299c5` **Re-introspected against the loaded Multiverse.** The module walk
+  is byte-stable across restarts — dir(Live) was always complete, so the server's baked
+  validation surface loses and gains nothing. What changed is *evidence*: the inventory
+  now marks every class **seen live** or **never met as an instance on this machine**,
+  and the count moved from 17 to 30 of 83. Thirteen confirmed: Chain, ChainMixerDevice,
+  CompressorDevice, DrumChain, DrumPad, Envelope, Eq8Device, MaxDevice, RackDevice,
+  Sample, SimplerDevice, TakeLane, WarpMarker. The introspector gained a class sweep
+  (every track, six rack levels deep, drum pads, take lanes, and the Sample /
+  warp-marker / envelope classes hanging off each track's first clips); the renderer
+  stopped cutting docstrings mid-sentence. The 53 still unmet are named and each has a
+  reason — no cue points in the set, no tuning file loaded, a dozen Live devices unused,
+  and the MidiNote family reachable only through calls a read-only walk never makes.
+  CuePoint is the one worth a deliberate confirmation someday: Arrangement locators are
+  an obvious future tool surface. Also recorded: Live's Licensing module exposes an
+  attribute whose name is a class name concatenated with its docstring — Ableton's bug,
+  reproduced in both dumps, harmless.
+
 ### 2026-08-05 — into the racks, and honest about what cannot be seen
 
 - `c56c0b0` **`get_track` walks rack chains** — two round trips per nesting level, none
