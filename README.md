@@ -34,14 +34,25 @@ outcome are welcome.
 
 ## Quick start
 
-1. Install the Remote Script and select it in Live —
+Four steps, in this order, because each one proves the ground the next stands on.
+Run everything from the repository root — the folder `git clone` gave you.
+
+1. **Install the Remote Script and select it in Live** —
    [remote_script/Alberton_MCP/README.md](remote_script/Alberton_MCP/README.md).
-2. Point your MCP client at the server —
-   [server/README.md](server/README.md) has the Claude Desktop snippet.
-3. Sanity checks, with Live open and **from the repository root**:
-   `python3 tools/wire_probe.py` (bridge) and `python3 tools/live_verify.py`
-   (server, end to end). Neither needs anything installed — they speak the socket
-   directly, so the Python that ships with macOS runs them.
+2. **Check the bridge**: `python3 tools/wire_probe.py`. This needs nothing
+   installed — it speaks the socket directly, so the Python that ships with macOS
+   runs it. 36 checks; if it cannot connect it tells you what to look at. Do not go
+   on until this passes.
+3. **Install the server's dependencies and test them**:
+   `uv run --project server pytest` (149 tests, no Ableton needed). You need `uv`
+   first — it is not part of macOS; [server/README.md](server/README.md) has the
+   one-line install.
+4. **Point your MCP client at the server** —
+   [server/README.md](server/README.md) has the Claude Desktop entry and a command
+   that prints the two paths you must fill in.
+
+`python3 tools/live_verify.py` is the end-to-end check across both halves: 23 checks
+against a real Live, and it too needs nothing installed.
 
 ## Testing
 
