@@ -18,7 +18,7 @@ in HANDOFF, the *spec* in CONTRACT.
 | | |
 |---|---|
 | Contract | 1.2 (additive; major version is what must match) |
-| Remote Script | `remote_script/Alberton_MCP/`, v0.3.1 |
+| Remote Script | `remote_script/Alberton_MCP/`, v0.3.2 |
 | Server | `server/`, package `alberton-mcp` 0.1.0, 46 tools, `mcp<2` pinned |
 | Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 — and the README says so, promising nothing more |
 | Open work | One item: the clean-install rehearsal. |
@@ -155,6 +155,22 @@ written to a frozen track. None of them were predicted.
 ---
 
 ## Log
+
+### 2026-08-05 — microtonality answered: note_tunings writes, and restores bit-exact
+
+- `6e7cab2` **Script 0.3.2**: a Boost setter that declares `boost::python::tuple`
+  refuses the list JSON delivers; `_op_set` now retries a TypeError'd list as a
+  tuple. Found live, verbatim signature in the error, against the user's
+  hand-activated **72-EDO** — which then answered the question the TET-12 decision
+  had been standing on: `note_tunings` reads as a plain list of absolute cents from
+  degree 0 (float32, steps 16.6667) and **writes over the wire** — one degree bent
+  +5 cents, the other 71 untouched, the saved ladder restored with max delta
+  0.00e+00. 8/8 checks; `wire_probe` 36/36 against 0.3.2, no regression.
+- `ReferencePitch` and `PitchClassAndOctave` confirmed live (A = 440.0, degree 54 of
+  72, octave 3). The reference pitch is read-only in practice: `frequency` has no
+  setter, and the object property joins the constructed-object family
+  (`EnvelopeEvent`, `TWarpMarker`) that JSON cannot feed. HANDOFF §4 records all of
+  it: TET 12 by choice, TET 53 a tuning file away.
 
 ### 2026-08-05 — the unproven, proven: 33 green checks across four probe runs
 

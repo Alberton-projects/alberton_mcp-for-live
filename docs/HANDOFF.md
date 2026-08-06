@@ -150,11 +150,18 @@ designing up front.
 problem — Live and MIDI are integer 12-TET — and should not be reintroduced casually.
 — Revisited 2026-08-05 at the user's correction: the decision had rested on "the LOM
 cannot do it", which is not what the LOM says. `Song.tuning_system` is read-only and
-None until a tuning is activated by hand (no LOM path loads one), but the active
-TuningSystem's `note_tunings` (in cents), `reference_pitch`, `name` and note range are
-all RW with listeners — microtonality is drivable the moment a tuning file is active.
-Writing `note_tunings` stays untested until one is. TET 12 remains the working scope,
-by choice now rather than by believed impossibility.
+None until a tuning is activated by hand (no LOM path loads one), but with one active
+the tuning is drivable. **Verified the same day against a hand-activated 72-EDO**:
+`note_tunings` reads as a plain list of absolute cents from degree 0 (float32 — 72
+values, steps of 16.6667) and **writes over the wire** — one degree bent +5 cents with
+the other 71 untouched, then the saved ladder restored with max delta 0.00e+00. One
+script fix was needed (0.3.2): the C++ setter declares `boost::python::tuple`, so
+`_op_set` retries a refused list as a tuple. The reference pitch is read-only in
+practice — `ReferencePitch.frequency` has no setter and the object-valued property
+cannot be fed a constructed object — so the diapason stays what the tuning file says.
+`ReferencePitch` and `PitchClassAndOctave` both confirmed live (frequency 440.0,
+index_in_octave 54 of 72 = A, octave 3). TET 12 remains the working scope, by choice
+now rather than by believed impossibility — TET 53 is a tuning file away.
 
 **Publication.** Build the tool the user needs first; decide about publishing later. The
 design is general-purpose regardless, so publishing costs little extra when the time comes.
@@ -473,13 +480,14 @@ every check green, all on ZZ material or save-and-restore):
   Reverb (54), Looper (9), CC Control (17). Loading a second instrument REPLACES the
   first on a track — an append assumption cost the sweep its first run.
 
-Still uncontrasted, each for a stated reason: `TuningSystem` writes (needs a tuning
-file activated by hand first — see §4), `capture_midi` / `trigger_session_record` and
-the recording behaviour of punch/overdub (the flags write; nobody has recorded through
-them), comping writes on take lanes. Not applicable: Boost vectors, dialogs,
-licensing, Push feedback rules, `EnvelopeEvent` construction. **Vetoed**: clip follow
-actions and rack macro variants do not exist in Live 12.4.3's LOM, and
-`add_warp_marker` cannot be fed from the wire.
+Still uncontrasted, each for a stated reason: `capture_midi` /
+`trigger_session_record` and the recording behaviour of punch/overdub (the flags
+write; nobody has recorded through them), comping writes on take lanes. Not
+applicable: Boost vectors, dialogs, licensing, Push feedback rules, and the
+constructed-object family — `EnvelopeEvent`, `TWarpMarker`, `ReferencePitch`: any
+property or argument that wants a C++ object built from scratch is unreachable from
+JSON. **Vetoed**: clip follow actions and rack macro variants do not exist in Live
+12.4.3's LOM. (`TuningSystem` writes moved to §4 — verified against a 72-EDO.)
 
 ---
 
