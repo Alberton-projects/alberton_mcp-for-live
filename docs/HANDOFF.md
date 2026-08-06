@@ -403,9 +403,6 @@ pointing at `server/` and the legacy entry is gone (timestamped backup kept next
 config). The legacy Remote Script folder and its Control Surface slot can be retired at
 leisure; the only feature gap until v1.1 is audio-clip import.
 
-The user's app repository `nuzic_app` (GitLab) has a personal access token embedded in
-plaintext in the git remote URL. Unrelated to this project, but it was flagged to them and
-should be rotated.
 
 **A Max for Live device's blob parameters are invisible to the LOM, and they can hold the
 device's entire musical content.** A `live.*` object whose parameter is declared
