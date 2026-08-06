@@ -156,6 +156,25 @@ written to a frozen track. None of them were predicted.
 
 ## Log
 
+### 2026-08-05 — recording into the Arrangement, and the map of the unproven
+
+- **Session→Arrangement recording verified over the wire** on the loaded Multiverse:
+  `record_mode` + `fire_clip` recorded a ZZ session clip into the Arrangement as a
+  looping clip (loop = source length, span = time recorded, notes not unrolled),
+  starting at the quantized launch boundary. Three behaviours joined HANDOFF §7:
+  `record_mode` applies on the NEXT tick (same-op read-back shows the old value —
+  the deferred-apply family gains a second member), `current_song_time` cannot be
+  set past `song_length`, and an automated recording must disarm-check and stop all
+  session clips first, then restore `back_to_arranger` to what it was. The probe's
+  own first run taught the last one: its abort path blanket-reset a flag that
+  belonged to the user. Probe script kept in scratch — it mutates performance state
+  (arm, queued clips) and is not battery material; the findings are the deliverable.
+- **The uncontrasted map is written down** (HANDOFF §7): what deserves a deliberate
+  test (cue points, routing, take lanes, punch/overdub/capture, song loop brace,
+  warp-marker writes), what is theory until a device is loaded, what is out of scope
+  by decision — and two features the inventory vetoes outright: clip follow actions
+  and rack macro variants are not in Live 12.4.3's LOM.
+
 ### 2026-08-05 — the second LOM dump: theory and evidence stop looking alike
 
 - `3d960af` `70299c5` **Re-introspected against the loaded Multiverse.** The module walk

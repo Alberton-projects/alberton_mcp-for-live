@@ -412,6 +412,53 @@ a gap nothing tested. **[found 2026-08-04, fixed the same day — `ec43c7e`]**: 
 carries each parameter's value, range, display reading, stepped flag and enabled flag,
 in one batched read per track.
 
+**Session→Arrangement recording works over the wire.** **[verified 2026-08-05, on the
+loaded Multiverse]** Set `Song.record_mode = true`, fire a Session clip, and Live
+records it into the Arrangement on its own track — as a **looping clip**: loop length =
+the source clip's length, Arrangement span = the time recorded (a 4-beat clip recorded
+over 16.5 beats arrived as one clip, start 236.0, end 252.46, `looping` true, its four
+notes present once — nothing unrolled). Recording starts at the clip's quantized launch
+boundary, not at the moment the transport started. Three caveats, each learned by this
+probe:
+
+- **`Song.record_mode` applies on the NEXT tick.** The same-op read-back returns the
+  old value (measured: `false` in the op that wrote `true`; `true` one tick later).
+  Second member of the deferred-apply family, with `Song.undo()`'s view of the step
+  just closed. The read-back rule "a silent clamp is visible" has this exception.
+- **`current_song_time` cannot be set past `song_length`** — Live refuses with "Cannot
+  set the Songtime behind the Songlength". `song_length` read 32 beats past
+  `last_event_time` on this set. There is no parking the playhead in empty space
+  beyond the song.
+- **What gets recorded is every track in Session state**: armed tracks record their
+  live input, and tracks with queued session clips resume and record. An automated
+  recording must first check nothing is armed and stop all session clips — then only
+  the intended track has session material to record. `back_to_arranger` flips true
+  afterwards; restore it to what it was, never impose a value (a blanket reset on an
+  abort path cost this probe its first run).
+
+**What remains uncontrasted against Live** (2026-08-05, from the second dump's 53
+never-met classes minus what the tools battle-test daily — the `MidiNote` family and
+browser items are exercised by every note edit and browse):
+
+- **Worth a deliberate test, someday a tool**: `CuePoint` and
+  `Song.set_or_delete_cue`/`jump_to_next_cue` (Arrangement locators — structure made
+  visible, but the set has none); track routing (`input_routing_type` and friends, 42
+  inventory mentions, never read or written); `TakeLane` (met in the dump, comping
+  never driven); the transport/record surface `punch_in`/`punch_out`,
+  `arrangement_overdub`, `capture_midi`, `trigger_session_record`, song `loop` /
+  `loop_start` / `loop_length`; audio-clip warping writes (`WarpMarker` met,
+  never moved).
+- **Unused Live devices** (theory until someone loads one; the generic tools should
+  handle them unchanged): Drift, Wavetable, Meld, Roar, Shifter, SpectralResonator,
+  HybridReverb, DrumCell, Looper, CcControl.
+- **Out of scope by decision**: `TuningSystem`, `ReferencePitch`,
+  `PitchClassAndOctave` (the TET-12 decision, §4).
+- **Not applicable**: Boost vectors, dialogs, licensing, Push feedback rules, the
+  `EnvelopeEvent` family (established unconstructible over the wire).
+- **Vetoed by the inventory**: clip follow actions and rack macro variants do **not
+  exist** in Live 12.4.3's LOM — two obvious-sounding future features that are not
+  buildable. (`Variants` is a licensing class.)
+
 ---
 
 ## 8. Reference material from the diagnostic session
