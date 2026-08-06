@@ -21,8 +21,8 @@ in HANDOFF, the *spec* in CONTRACT.
 | Remote Script | `remote_script/Alberton_MCP/`, v0.3.2 |
 | Server | `server/`, package `alberton-mcp` 0.1.0, 46 tools, `mcp<2` pinned |
 | Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 — and the README says so, promising nothing more |
-| Open work | None blocking. The clean-install rehearsal is done (2026-08-06); what remains is the publication decision itself. |
-| Published | No. Publication is deliberately the last step — and now the only one left. |
+| Open work | None. Every gate has been passed, the cold-LLM test included. |
+| Published | **Yes — public** at `github.com/Alberton-projects/alberton_mcp-for-live` since 2026-08-06. |
 
 **Tests, all green.** Everything was re-verified 2026-08-05 after the review, against
 the loaded 29-track / 181-scene *Alberton Multiverse*: `live_verify` 23/23,
@@ -147,14 +147,8 @@ written to a frozen track. None of them were predicted.
 
 ## Open — undecided
 
-- **The cold-LLM documentation test.** The repository is **public** as of 2026-08-06 at
-  `github.com/Alberton-projects/alberton_mcp-for-live` (a new organization deliberately
-  unlinked from the author's other work; GitLab mirror dropped by decision; anonymous
-  clone verified). The test: a different model and MCP client — ChatGPT Desktop on the
-  second account — given only the README and a musical task, driving its own install
-  from the published URL. Every moment it gets lost is a documentation defect to fix.
-  Red line unchanged: if its client turns out remote-only, no tunnelling — the fallback
-  is a local-stdio client, never the socket on the network.
+- ~~The cold-LLM documentation test~~ — **run and passed 2026-08-06**, see the log
+  entry. One documentation defect found and fixed the same day.
 - Widening the supported scope. Only Live 12.4.3 Suite on macOS Apple Silicon has ever
   been tested; the user cannot currently test Windows or Live 11, so the README states
   that scope and promises nothing beyond it. Revisit when someone reports otherwise.
@@ -163,6 +157,41 @@ written to a frozen track. None of them were predicted.
 ---
 
 ## Log
+
+### 2026-08-06 — the cold model: from a URL to a polyrhythm in one sitting
+
+The test this project was built to pass. ChatGPT Desktop on the second user account —
+a model that had never seen this code, this conversation, or its author — was given
+the public repository URL and a musical task, nothing else. **Four minutes later** it
+had cloned, installed the Remote Script, registered the server in its own client (the
+Codex-shared config — translating our Claude Desktop instructions unaided), run the
+149 tests, guided the human through the Control Surface click, and written a C major
+arpeggio into the open set. Over the following hour it iterated tremolo automation by
+feel, transposed the clip to B minor atomically, and built a 4:3 clave — rim shots at
+beats 0, 4/3, 8/3 — with a bass filling the gaps, using **13 of the 46 tools**,
+including browse, load_device and song_batch. It told the user to press Cmd-S because
+"Alberton cannot save" — a sentence it could only have learned from the manual.
+
+Its own error report, triaged:
+
+- Three were its client's sandbox (GitHub DNS, local TCP permission, tools not
+  loading mid-conversation) — not ours, all self-resolved.
+- One was musical taste (tremolo too fast), one was documented behaviour working as
+  designed (palette snapping — it accepted the read-back as truth, verbatim from the
+  docs).
+- One was ambiguous and well-handled: loading two heavy presets outlived the reply
+  window; **it did not blindly retry — it read the set and confirmed everything had
+  landed**. That recipe is now in the manual.
+- And **one was ours**: `song_batch`'s docstring said that to create tracks and fill
+  them in one batch you should "pass explicit indices" — advice that cannot work,
+  because locators resolve at compile time against the set as it is. The model
+  followed the docs into `track 4 out of range`; the atomic rollback held ("no es va
+  escriure res", its words), and it split the work in two. The docstring, CONTRACT
+  B.9 and both manuals now state the real rule: create first, fill second.
+
+The safety story held end to end: the one failure that reached the musical phase was
+rolled back whole, the model trusted the structured error, and recovered correctly on
+the first try.
 
 ### 2026-08-06 — the clean install, rehearsed by someone who knew nothing
 

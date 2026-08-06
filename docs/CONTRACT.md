@@ -401,6 +401,11 @@ Compiles to one Layer A `batch`: any sequence of B.3/B.4/B.5/B.8 mutating tools 
 exactly one undo step, atomic-or-absent. Orientation tools are allowed inside for
 read-modify-write sequences.
 
+Locators resolve when the batch is **compiled**, against the set as it is: a track or
+scene the batch itself creates cannot be addressed later in the same batch, even by
+index. Create, then fill, as two calls. The attempt is safe — the whole batch refuses
+and nothing is written.
+
 ---
 
 ## Parity appendix — legacy `ableton-mcp` (21 tools) → this catalogue

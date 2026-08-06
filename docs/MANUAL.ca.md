@@ -114,6 +114,10 @@ servidor la renderitza dins de l'envolupant.
 `song_batch` compila una seqüència d'eines en un únic lot atòmic: o hi cau tot o no hi
 cau res, i un Cmd-Z ho desfà tot plegat.
 
+Una regla: els localitzadors es resolen **abans** que el lot corri, així que una pista
+o escena creada dins del lot no es pot omplir al mateix lot — crea primer, omple amb
+una segona crida. L'intent és segur: el lot sencer refusa i no s'escriu res.
+
 ### Arribar a qualsevol altra cosa
 
 `lom_get`, `lom_set`, `lom_call` i `lom_describe` exposen el Live Object Model
@@ -273,6 +277,10 @@ calgui interpretar. Els codis que importen:
   reintenta.
 - **`conflict`** — l'slot o l'espai ja està ocupat.
 - **`invalid_argument`** — el hint llista els valors legals.
+
+Un preset pesat pot fer que `load_device` sobrevisqui la finestra de resposta encara
+que la càrrega s'acabi completant dins de Live. No el tornis a executar — llegeix el
+set (`get_track`) i confirma primer què ha passat de debò.
 
 Si Live deixa de respondre a tot: recarrega la Control Surface (posa-la a None i
 torna-la a posar). Això reinicia el pont sense reiniciar Live.

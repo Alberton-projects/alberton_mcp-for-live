@@ -620,9 +620,11 @@ async def song_batch(calls: list, stop_on_error: bool = True) -> dict:
     set_clip, set_scene, edit_notes, create_clip, create_scene,
     create_midi_track, create_audio_track, quantize_clip, fire_clip,
     fire_scene, stop_clip, transport, lom_set, lom_call. Locators resolve
-    before execution:
-    when creating tracks/scenes and then filling them in the same batch,
-    pass explicit indices. Name-resolved locators are identity-guarded (the
+    BEFORE the batch runs, against the set as it is — so a track or scene
+    created inside the batch cannot be addressed later in the same batch,
+    not even by index. Create first, then fill with a second call; trying
+    it refuses the whole batch and writes nothing.
+    Name-resolved locators are identity-guarded (the
     batch refuses to run if the named object moved) — except under
     stop_on_error=false, which runs everything regardless and therefore
     trusts the locators as resolved."""

@@ -109,6 +109,10 @@ it into the envelope.
 `song_batch` compiles a sequence of tools into a single atomic batch: all of it lands
 or none of it does, and Cmd-Z takes back the lot.
 
+One rule: locators resolve **before** the batch runs, so a track or scene created
+inside the batch cannot be filled in the same batch — create first, fill with a second
+call. The attempt is safe: the whole batch refuses and nothing is written.
+
 ### Reach anything else
 
 `lom_get`, `lom_set`, `lom_call`, `lom_describe` expose the Live Object Model
@@ -261,6 +265,10 @@ parsed. The codes that matter:
   Live"*, which means **nothing was written**. Read the set again and retry.
 - **`conflict`** — the slot or span is occupied.
 - **`invalid_argument`** — the hint lists the legal values.
+
+A heavy preset can make `load_device` outlive the reply window even though the load
+completes inside Live. Do not run it again — read the set (`get_track`) and confirm
+what actually happened first.
 
 If Live stops responding to everything: reload the Control Surface (set it to None and
 back). That restarts the bridge without restarting Live.
