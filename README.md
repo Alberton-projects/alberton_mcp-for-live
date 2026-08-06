@@ -3,7 +3,7 @@
 Talk to your Ableton Live set. An [MCP](https://modelcontextprotocol.io) server plus a
 companion Remote Script let an AI assistant read and write a Live set for you — create
 tracks and clips, write and edit MIDI, drive devices, draw automation, build
-arrangements — while you stay at the instrument.
+arrangements with prompts.
 
 > **Status** (2026-08-06): working. An AI that had never seen this project installed
 > it from this URL on a clean machine and was making music in the open set four
@@ -12,7 +12,7 @@ arrangements — while you stay at the instrument.
 ## Install — for musicians
 
 You do not need to know the terminal. Your AI assistant does the installing; you do
-the three things only a human can.
+only three things.
 
 You need:
 
@@ -47,7 +47,7 @@ you can read at [docs/MANUAL.md](docs/MANUAL.md) — what this can do, what it c
 reach, and what Live allows nobody to do. (Also in Catalan:
 [docs/MANUAL.ca.md](docs/MANUAL.ca.md).)
 
-If any step confuses you or fails, that is a defect of this README —
+If any step confuses you or fails:
 [open an issue](https://github.com/Alberton-projects/alberton_mcp-for-live/issues)
 and say where you got stuck.
 
