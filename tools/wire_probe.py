@@ -19,9 +19,31 @@ import time
 DEFAULT_PORT = 17853
 
 
+class BridgeNotThere(Exception):
+    """Nothing is listening. Said in words, not as a traceback."""
+
+
 class Wire(object):
     def __init__(self, host, port):
-        self.sock = socket.create_connection((host, port), timeout=5.0)
+        try:
+            self.sock = socket.create_connection((host, port), timeout=5.0)
+        except OSError as exc:
+            # This is the FIRST thing the README tells a newcomer to run, and
+            # until 2026-08-06 it greeted them with a Python traceback when
+            # Live was not ready — the one moment where a clear sentence
+            # matters most. Found by rehearsing a clean install.
+            raise BridgeNotThere(
+                "cannot reach the Alberton bridge at %s:%d (%s)\n\n"
+                "  Check, in this order:\n"
+                "    1. Ableton Live is open.\n"
+                "    2. Preferences > Link, Tempo & MIDI has 'Alberton MCP'\n"
+                "       selected in a Control Surface slot (Input/Output: None).\n"
+                "    3. Live's status bar said 'Alberton: listening on %s:%d'\n"
+                "       when you selected it.\n"
+                "    4. No other client holds the socket — the bridge accepts\n"
+                "       one at a time, and only one Live per machine can bind\n"
+                "       this port, whichever user account it runs in."
+                % (host, port, exc, host, port))
         self.sock.settimeout(0.2)
         self.buf = b""
         self.next_id = 1
@@ -359,4 +381,8 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except BridgeNotThere as exc:
+        print("\n%s\n" % exc)
+        sys.exit(2)
