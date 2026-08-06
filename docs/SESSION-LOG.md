@@ -147,13 +147,14 @@ written to a frozen track. None of them were predicted.
 
 ## Open — undecided
 
-- **When to flip the repository public.** It exists, private, at
-  `github.com/Alberton-projects/alberton_mcp-for-live` (created 2026-08-06 under a new
-  organization deliberately unlinked from the author's other work; the GitLab mirror
-  was dropped by decision the same day). Before or at the flip: the cold-LLM
-  documentation test — a different model and MCP client, given only the README, walking
-  the install from the published repository. A private repo cannot serve that test
-  without handing out tokens, so the flip and the test go together.
+- **The cold-LLM documentation test.** The repository is **public** as of 2026-08-06 at
+  `github.com/Alberton-projects/alberton_mcp-for-live` (a new organization deliberately
+  unlinked from the author's other work; GitLab mirror dropped by decision; anonymous
+  clone verified). The test: a different model and MCP client — ChatGPT Desktop on the
+  second account — given only the README and a musical task, driving its own install
+  from the published URL. Every moment it gets lost is a documentation defect to fix.
+  Red line unchanged: if its client turns out remote-only, no tunnelling — the fallback
+  is a local-stdio client, never the socket on the network.
 - Widening the supported scope. Only Live 12.4.3 Suite on macOS Apple Silicon has ever
   been tested; the user cannot currently test Windows or Live 11, so the README states
   that scope and promises nothing beyond it. Revisit when someone reports otherwise.
