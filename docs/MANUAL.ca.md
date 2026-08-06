@@ -1,8 +1,9 @@
 # Alberton MCP for Live — què pot fer i què no
 
-Manual d'usuari. Tot el que hi ha aquí està implementat i provat, o marcat com a no
-provat; quan una cosa és impossible, se'n diu el motiu. Escrit el 2026-08-05 contra
-el contracte 1.2, Remote Script 0.3.2, 46 eines, Ableton Live 12.4.3 Suite a macOS.
+Manual d'usuari. Tot el que s'hi afirma s'ha executat contra un Ableton Live real i
+s'ha observat; quan una cosa és impossible, se'n diu el motiu. Escrit el 2026-08-05
+contra el contracte 1.2, Remote Script 0.3.2, 46 eines, Ableton Live 12.4.3 Suite a
+macOS.
 
 > Traducció de [`MANUAL.md`](MANUAL.md), que és la versió canònica. El projecte és en
 > anglès; aquesta versió existeix perquè l'usuari la va demanar.

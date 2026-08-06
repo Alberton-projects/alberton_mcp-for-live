@@ -1,7 +1,7 @@
 # Alberton MCP for Live — what it can and cannot do
 
-A user's manual. Everything below is either implemented and tested, or marked as
-untested; where something is impossible, the reason is given. Written 2026-08-05
+A user's manual. Everything stated here has been run against a real Ableton Live and
+observed; where something is impossible, the reason is given. Written 2026-08-05
 against contract 1.2, Remote Script 0.3.2, 46 tools, Ableton Live 12.4.3 Suite on
 macOS.
 
