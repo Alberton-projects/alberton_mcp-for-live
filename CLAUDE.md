@@ -45,10 +45,10 @@ who opens the Live set without having seen the code.
 `Song.begin_undo_step()` / `end_undo_step()`, so a whole sequence collapses into a single
 Cmd-Z and cannot leave a half-built set.
 
-**No domain logic in this repo.** Nuzic (the user's music-and-mathematics system) must not
+**No domain logic in this repo.** The author's own music-and-mathematics system must not
 appear anywhere in this codebase — not in code, not in constants, not in comments. It is a
-separate project that will consume this server as a client. Nuzic is used only as a
-*design reference* when judging whether a tool signature is expressive enough.
+separate, private project that will consume this server as a client, and it is used only
+as a *design reference* when judging whether a tool signature is expressive enough.
 
 **English only** in code, comments, documentation, and commit messages.
 

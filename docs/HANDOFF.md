@@ -140,13 +140,13 @@ nested tuplets):
 3. Always emit a reference track carrying pulses, accents and segment boundaries — this is
    what makes structure Live cannot draw visible to a human.
 
-**Domain separation.** The user's Nuzic system stays entirely out of this repository. It
+**Domain separation.** The user's own composition system stays entirely out of this repository. It
 will consume the server as a client. A consequence worth noting: the MCP tool schema
 becomes the de facto interchange format, so no separate intermediate representation needs
 designing up front.
 
 **Equal temperament.** The user has decided to work in TET 12 only. Microtonality
-(Nuzic supports up to TET 53) is explicitly out of scope. This removes the hardest mapping
+(the user's system reaches TET 53) is explicitly out of scope. This removes the hardest mapping
 problem — Live and MIDI are integer 12-TET — and should not be reintroduced casually.
 — Revisited 2026-08-05 at the user's correction: the decision had rested on "the LOM
 cannot do it", which is not what the LOM says. `Song.tuning_system` is read-only and
@@ -218,8 +218,8 @@ definitively.
 **Phase 3 — The MCP server.** Tool implementations, path resolution, browser index,
 structured errors, read-back verification, context-efficient responses.
 
-**Phase 4 (optional, later) — Nuzic client.** A separate repository. Compiles Nuzic
-compositions to calls against this server. Testable without Ableton.
+**Phase 4 (optional, later) — the composition client.** A separate, private repository.
+Compiles the user's compositions to calls against this server. Testable without Ableton.
 
 ---
 
@@ -513,6 +513,5 @@ export/render at all** — the only export anywhere is `LooperDevice.export_to_c
   tool reference in `references/`. Useful as a specification of the behaviour we are
   replacing, and as a checklist of what the new tool must at minimum match.
 - PDF *AbletonMCP — Referència completa*, 15 pages, same content in human-readable form.
-- `NUZIC_SYSTEM_RULES.md` in the user's `nuzic_app` repository — the formal specification
-  of the Nuzic system. Relevant only for Phase 4, and only as a design reference before
-  then. Note it is a local untracked file, not committed upstream.
+- The formal specification of the user's composition system, in its own private
+  repository. Relevant only for Phase 4, and only as a design reference before then.
