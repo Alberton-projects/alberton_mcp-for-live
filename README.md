@@ -16,28 +16,31 @@ the three things only a human can.
 
 You need:
 
-- a **Mac** with **Ableton Live 12** installed,
-- an **AI assistant on that Mac that can run commands and connect to MCP servers** —
-  Claude Desktop or Claude Code, ChatGPT Desktop with Codex, or similar,
+- a computer with **Ableton Live 12** installed — everything has been verified on
+  macOS; nothing in the design is Mac-specific, so Windows should work, but nobody
+  has tried yet ([tell us](https://github.com/Alberton-projects/alberton_mcp-for-live/issues)
+  if you are the first),
+- an **AI assistant on that computer that can run commands and connect to MCP
+  servers** — Claude Desktop or Claude Code, ChatGPT Desktop with Codex, or similar,
 - about **ten minutes**, with Live open.
 
 Open your assistant and paste this:
 
 > I want to install and use this:
 > https://github.com/Alberton-projects/alberton_mcp-for-live — guide me step by step
-> from scratch on my Mac, including connecting yourself to the server over MCP.
-> Explain each step in plain words before doing it. When everything is connected,
-> create a 4-beat MIDI clip with a C major arpeggio in the Ableton set I have open,
-> so we both know it works.
+> from scratch on this computer, including connecting yourself to the server over
+> MCP. Explain each step in plain words before doing it. When everything is
+> connected, create a 4-beat MIDI clip with a C major arpeggio in the Ableton set I
+> have open, so we both know it works.
 
 That is the whole procedure. The assistant reads this repository and does the rest.
 Only three things are yours:
 
-1. **One click inside Live**, when asked: Settings → Link, Tempo & MIDI → choose
+1. **One click inside Live**, when asked: Preferences → Link, Tempo & MIDI → choose
    **Alberton MCP** in a free Control Surface slot (Input and Output: **None**).
 2. **Approve** what your assistant proposes to run, if it asks.
-3. **Press Cmd-S** when you like what you hear. Nothing is ever saved for you — your
-   set is always yours to keep or discard.
+3. **Press Cmd-S** (Ctrl-S on Windows) when you like what you hear. Nothing is ever
+   saved for you — your set is always yours to keep or discard.
 
 When it works, ask for music in your own words: the assistant sees the same manual
 you can read at [docs/MANUAL.md](docs/MANUAL.md) — what this can do, what it can
