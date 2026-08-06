@@ -7,9 +7,13 @@ essentially never change.
 
 ## Install
 
+**Every command in this file is run from the repository root** — the folder you get
+from `git clone`, the one holding `README.md` and `docs/`. Not from this folder.
+
 ```
 DEST="$HOME/Music/Ableton/User Library/Remote Scripts/Alberton_MCP"
-mkdir -p "$DEST" && cp __init__.py impl.py "$DEST/"
+mkdir -p "$DEST" && cp remote_script/Alberton_MCP/__init__.py \
+                      remote_script/Alberton_MCP/impl.py "$DEST/"
 ```
 
 The folder name must keep the underscore (Live imports it as a Python module and a
@@ -31,14 +35,16 @@ scope note in the top-level README.
 
 ## Verify
 
-With Live running and the surface selected:
+With Live running and the surface selected, from the repository root:
 
 ```
 python3 tools/wire_probe.py
 ```
 
 36 contract-compliance checks; tempo is restored and the probe's scratch track is
-deleted afterwards.
+deleted afterwards. This probe needs nothing installed — it speaks the socket
+directly, so the Python that ships with macOS runs it. If it cannot connect it says
+what to check.
 
 ## Iterate without restarting Live (development only)
 

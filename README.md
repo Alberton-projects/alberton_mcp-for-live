@@ -38,8 +38,10 @@ outcome are welcome.
    [remote_script/Alberton_MCP/README.md](remote_script/Alberton_MCP/README.md).
 2. Point your MCP client at the server —
    [server/README.md](server/README.md) has the Claude Desktop snippet.
-3. Sanity checks, with Live open: `python3 tools/wire_probe.py` (bridge) and
-   `python3 tools/live_verify.py` (server, end to end).
+3. Sanity checks, with Live open and **from the repository root**:
+   `python3 tools/wire_probe.py` (bridge) and `python3 tools/live_verify.py`
+   (server, end to end). Neither needs anything installed — they speak the socket
+   directly, so the Python that ships with macOS runs them.
 
 ## Testing
 
