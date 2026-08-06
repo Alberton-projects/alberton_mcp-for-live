@@ -36,8 +36,16 @@ def distill_class(qualname, cls, out):
         if kind == "property":
             props[name] = bool(member.get("writable"))
         elif kind == "method":
-            if not (name.startswith(("add_", "remove_")) or
-                    name.endswith("_has_listener")):
+            # Drop only listener machinery. A bare add_/remove_ prefix is not
+            # enough: add_warp_marker and remove_notes_by_id are real methods,
+            # and dropping them made lom_call refuse calls Live accepts —
+            # found when a probe's "not constructible" verdict turned out to
+            # be this filter's, not Live's (2026-08-05).
+            listener_machinery = (
+                name.endswith("_has_listener")
+                or (name.startswith(("add_", "remove_"))
+                    and name.endswith("_listener")))
+            if not listener_machinery:
                 methods.append(name)
     out["classes"][qualname] = {
         "props": props,

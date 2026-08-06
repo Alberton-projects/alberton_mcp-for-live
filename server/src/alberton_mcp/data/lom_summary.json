@@ -139,6 +139,7 @@
   "Base.LimitationError": {
    "listeners": [],
    "methods": [
+    "add_note",
     "with_traceback"
    ],
    "props": {}
@@ -414,6 +415,8 @@
     "warping"
    ],
    "methods": [
+    "add_new_notes",
+    "add_warp_marker",
     "apply_note_modifications",
     "automation_envelope",
     "beat_to_sample_time",
@@ -437,6 +440,10 @@
     "note_number_to_name",
     "quantize",
     "quantize_pitch",
+    "remove_notes",
+    "remove_notes_by_id",
+    "remove_notes_extended",
+    "remove_warp_marker",
     "replace_selected_notes",
     "sample_to_beat_time",
     "scrub",
@@ -1490,12 +1497,14 @@
     "visible_macro_count"
    ],
    "methods": [
+    "add_macro",
     "copy_pad",
     "delete_selected_variation",
     "insert_chain",
     "randomize_macros",
     "recall_last_used_variation",
     "recall_selected_variation",
+    "remove_macro",
     "save_preset_to_compare_ab_slot",
     "store_chosen_bank",
     "store_variation"
@@ -1626,6 +1635,7 @@
     "gain_display_string",
     "insert_slice",
     "move_slice",
+    "remove_slice",
     "reset_slices",
     "sample_to_beat_time"
    ],
@@ -2377,6 +2387,7 @@
     "visible_modulation_target_names"
    ],
    "methods": [
+    "add_parameter_to_modulation_matrix",
     "get_modulation_target_parameter_name",
     "get_modulation_value",
     "is_parameter_modulatable",
