@@ -147,11 +147,16 @@ written to a frozen track. None of them were predicted.
 
 ## Open — undecided
 
-- Whether to publish, and where (§4 of HANDOFF). Current intent: yes, but last.
+- **When to flip the repository public.** It exists, private, at
+  `github.com/Alberton-projects/alberton_mcp-for-live` (created 2026-08-06 under a new
+  organization deliberately unlinked from the author's other work; the GitLab mirror
+  was dropped by decision the same day). Before or at the flip: the cold-LLM
+  documentation test — a different model and MCP client, given only the README, walking
+  the install from the published repository. A private repo cannot serve that test
+  without handing out tokens, so the flip and the test go together.
 - Widening the supported scope. Only Live 12.4.3 Suite on macOS Apple Silicon has ever
   been tested; the user cannot currently test Windows or Live 11, so the README states
   that scope and promises nothing beyond it. Revisit when someone reports otherwise.
-- GitHub repository with a GitLab mirror; the user's existing scripts move in first.
 - One LinkedIn article per thing published to the repository.
 
 ---
