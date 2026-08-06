@@ -1,12 +1,74 @@
 # Alberton MCP for Live
 
-An [MCP](https://modelcontextprotocol.io) server plus a companion Ableton Live Remote
-Script that let an LLM read and write a Live set through the Live Object Model (LOM).
+Talk to your Ableton Live set. An [MCP](https://modelcontextprotocol.io) server plus a
+companion Remote Script let an AI assistant read and write a Live set for you — create
+tracks and clips, write and edit MIDI, drive devices, draw automation, build
+arrangements — while you stay at the instrument.
 
-> **Status: working, not yet packaged for third parties** (2026-08-05). 46 tools covering
-> Session and Arrangement writing, clip automation, audio import, device and macro
-> control, and change subscriptions. Plan and findings:
-> [docs/SESSION-LOG.md](docs/SESSION-LOG.md).
+> **Status** (2026-08-06): working. An AI that had never seen this project installed
+> it from this URL on a clean machine and was making music in the open set four
+> minutes later. Tested deeply on one setup so far — see *What it has been tested on*.
+
+## Install — for musicians
+
+You do not need to know the terminal. Your AI assistant does the installing; you do
+the three things only a human can.
+
+You need:
+
+- a **Mac** with **Ableton Live 12** installed,
+- an **AI assistant on that Mac that can run commands and connect to MCP servers** —
+  Claude Desktop or Claude Code, ChatGPT Desktop with Codex, or similar,
+- about **ten minutes**, with Live open.
+
+Open your assistant and paste this:
+
+> I want to install and use this:
+> https://github.com/Alberton-projects/alberton_mcp-for-live — guide me step by step
+> from scratch on my Mac, including connecting yourself to the server over MCP.
+> Explain each step in plain words before doing it. When everything is connected,
+> create a 4-beat MIDI clip with a C major arpeggio in the Ableton set I have open,
+> so we both know it works.
+
+That is the whole procedure. The assistant reads this repository and does the rest.
+Only three things are yours:
+
+1. **One click inside Live**, when asked: Settings → Link, Tempo & MIDI → choose
+   **Alberton MCP** in a free Control Surface slot (Input and Output: **None**).
+2. **Approve** what your assistant proposes to run, if it asks.
+3. **Press Cmd-S** when you like what you hear. Nothing is ever saved for you — your
+   set is always yours to keep or discard.
+
+When it works, ask for music in your own words: the assistant sees the same manual
+you can read at [docs/MANUAL.md](docs/MANUAL.md) — what this can do, what it can
+reach, and what Live allows nobody to do. (Also in Catalan:
+[docs/MANUAL.ca.md](docs/MANUAL.ca.md).)
+
+If any step confuses you or fails, that is a defect of this README —
+[open an issue](https://github.com/Alberton-projects/alberton_mcp-for-live/issues)
+and say where you got stuck.
+
+## Install by hand — for terminal people
+
+Four steps, in this order, because each one proves the ground the next stands on.
+Run everything from the repository root — the folder `git clone` gave you.
+
+1. **Install the Remote Script and select it in Live** —
+   [remote_script/Alberton_MCP/README.md](remote_script/Alberton_MCP/README.md).
+2. **Check the bridge**: `python3 tools/wire_probe.py`. This needs nothing
+   installed — it speaks the socket directly, so the Python that ships with macOS
+   runs it. 36 checks; if it cannot connect it tells you what to look at. Do not go
+   on until this passes.
+3. **Install the server's dependencies and test them**:
+   `uv run --directory server pytest` (149 tests, no Ableton needed). You need `uv`
+   first — it is not part of macOS; [server/README.md](server/README.md) has the
+   one-line install.
+4. **Point your MCP client at the server** —
+   [server/README.md](server/README.md) has the Claude Desktop entry and a command
+   that prints the two paths you must fill in.
+
+`python3 tools/live_verify.py` is the end-to-end check across both halves: 23 checks
+against a real Live, and it too needs nothing installed.
 
 ## What it has been tested on
 
@@ -31,28 +93,6 @@ on Windows (`%USERPROFILE%\Documents\Ableton\User Library\Remote Scripts\`), and
 inventory this project designs against was generated on 12.4.3 — regenerate it with
 `tools/introspect/` on your version before trusting anything unusual. Reports of either
 outcome are welcome.
-
-## Quick start
-
-Four steps, in this order, because each one proves the ground the next stands on.
-Run everything from the repository root — the folder `git clone` gave you.
-
-1. **Install the Remote Script and select it in Live** —
-   [remote_script/Alberton_MCP/README.md](remote_script/Alberton_MCP/README.md).
-2. **Check the bridge**: `python3 tools/wire_probe.py`. This needs nothing
-   installed — it speaks the socket directly, so the Python that ships with macOS
-   runs it. 36 checks; if it cannot connect it tells you what to look at. Do not go
-   on until this passes.
-3. **Install the server's dependencies and test them**:
-   `uv run --directory server pytest` (149 tests, no Ableton needed). You need `uv`
-   first — it is not part of macOS; [server/README.md](server/README.md) has the
-   one-line install.
-4. **Point your MCP client at the server** —
-   [server/README.md](server/README.md) has the Claude Desktop entry and a command
-   that prints the two paths you must fill in.
-
-`python3 tools/live_verify.py` is the end-to-end check across both halves: 23 checks
-against a real Live, and it too needs nothing installed.
 
 ## Testing
 
