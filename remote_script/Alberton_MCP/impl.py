@@ -29,7 +29,7 @@ HOST = "127.0.0.1"
 PORT = 17853
 
 CONTRACT_VERSION = "1.2"
-SCRIPT_VERSION = "0.3.1"
+SCRIPT_VERSION = "0.3.2"
 
 LINE_MAX = 16 * 1024 * 1024
 BATCH_MAX = 256
@@ -616,7 +616,20 @@ class Bridge(object):
         try:
             for prop, value in props.items():
                 try:
-                    setattr(obj, prop, self._decode(value))
+                    decoded = self._decode(value)
+                    try:
+                        setattr(obj, prop, decoded)
+                    except TypeError:
+                        # Boost setters declare their sequence type, and JSON
+                        # has only one: a vector-valued property whose setter
+                        # wants boost::python::tuple refuses the list the wire
+                        # delivers (TuningSystem.note_tunings did, verbatim
+                        # signature in the error). Retry as a tuple before
+                        # giving up; a setter that wanted the list is unharmed
+                        # because it never raises on it.
+                        if not isinstance(decoded, list):
+                            raise
+                        setattr(obj, prop, tuple(decoded))
                 except ProtocolError:
                     raise
                 except Exception as exc:
