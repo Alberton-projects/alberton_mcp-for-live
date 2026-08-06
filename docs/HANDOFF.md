@@ -480,14 +480,33 @@ every check green, all on ZZ material or save-and-restore):
   Reverb (54), Looper (9), CC Control (17). Loading a second instrument REPLACES the
   first on a track — an append assumption cost the sweep its first run.
 
-Still uncontrasted, each for a stated reason: `capture_midi` /
-`trigger_session_record` and the recording behaviour of punch/overdub (the flags
-write; nobody has recorded through them), comping writes on take lanes. Not
-applicable: Boost vectors, dialogs, licensing, Push feedback rules, and the
-constructed-object family — `EnvelopeEvent`, `TWarpMarker`, `ReferencePitch`: any
-property or argument that wants a C++ object built from scratch is unreachable from
-JSON. **Vetoed**: clip follow actions and rack macro variants do not exist in Live
-12.4.3's LOM. (`TuningSystem` writes moved to §4 — verified against a 72-EDO.)
+**The escape hatch's own inventory, contrasted 2026-08-05** (found while writing
+`docs/MANUAL.md`, tested because the manual would otherwise have shipped rows saying
+"untested"). All work through `lom_call`/`lom_set` today: `Track.delete_device(i)`,
+`Device.name` writes, `Song.create_return_track()` (and every track gains a send;
+`delete_track("return:N")` takes it back, sends included), `Song.duplicate_scene(i)`,
+`Clip.crop()`, `Clip.duplicate_loop()`, `Clip.duplicate_region(...)`,
+`Song.capture_midi()` (a no-op without complaint when `can_capture_midi` is false),
+`tap_tempo()`, `scrub_by()`. Two carry semantics worth knowing:
+
+- **`Song.move_device(device, target, position)` returns the resulting index, and Live
+  enforces the chain's ordering rules.** Moving an audio effect in front of the
+  instrument on a MIDI track is refused *silently*: the return value is the unchanged
+  index and nothing moves. A legal move (reordering two audio effects) works.
+  `find_device_position` answers the same question without moving anything.
+- **`Song.jump_by(beats)` is relative to `song.start_time`, not to the visible
+  playhead.** Observed landing at beat 4.0 from a `current_song_time` of 39.8 when the
+  two had diverged; when they agree it accumulates as expected (39.8 → 43.8 → 47.8).
+  Use `transport(position=…)` for absolute movement.
+
+Still uncontrasted, each for a stated reason: `trigger_session_record` and the
+recording behaviour of punch/overdub (the flags write; nobody has recorded through
+them), comping writes on take lanes. Not applicable: Boost vectors, dialogs,
+licensing, Push feedback rules, and the constructed-object family — `EnvelopeEvent`,
+`TWarpMarker`, `ReferencePitch`: any property or argument that wants a C++ object
+built from scratch is unreachable from JSON. **Vetoed**: clip follow actions and rack
+macro variants do not exist in Live 12.4.3's LOM. And **Live's API has no save and no
+export/render at all** — the only export anywhere is `LooperDevice.export_to_clip_slot`. (`TuningSystem` writes moved to §4 — verified against a 72-EDO.)
 
 ---
 

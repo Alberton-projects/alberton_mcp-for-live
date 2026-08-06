@@ -48,7 +48,7 @@ Two rules shape everything else:
 | One track in depth: mixer, devices, **inside racks**, clips | `get_track` |
 | One clip's properties, optionally its notes | `get_clip` |
 | Notes of a clip, or **statistics instead of notes** | `get_notes(summary=true)` |
-| What changed since you last looked | `watch` + `get_changes` |
+| What changed since you last looked | `watch`, `get_changes`, `unwatch` |
 
 `get_track` walks rack chains: a rack shows its chains, each chain its devices, and
 every nested device carries a ready-to-use locator like `"1/0/8/0/4"`. With
@@ -66,9 +66,13 @@ a programmed one).
 |---|---|
 | A clip created, named, coloured and filled — one undo step | `create_clip` |
 | Surgical note edits by note id | `edit_notes` |
+| Rename, recolour, change loop points or signature | `set_clip` |
 | Quantize | `quantize_clip` |
+| Copy a Session clip to another slot | `duplicate_clip_to_slot` |
+| Empty a Session slot | `delete_clip` |
 | A clip straight into the Arrangement | `create_arrangement_clip` |
 | Copy a Session clip into the Arrangement | `duplicate_clip_to_arrangement` |
+| List, edit or remove Arrangement clips | `list_arrangement_clips`, `set_arrangement_clip`, `delete_arrangement_clip` |
 | Import an audio file | `import_audio_clip` |
 | Structure a human can see | `create_reference_clip` |
 
@@ -90,6 +94,7 @@ volume in **dB or normalized**, pan, sends), `delete_track`, `duplicate_track`;
 |---|---|
 | Find something loadable | `browse` |
 | Load it | `load_device` |
+| Re-read the browser after installing a pack | `refresh_browser_index` |
 | Set a parameter — including rack macros and devices nested in racks | `set_device_parameter` |
 | Draw automation from a few breakpoints | `automate_parameter` |
 | Remove automation | `clear_automation` |
@@ -114,26 +119,36 @@ it — see the next section for what that buys you today.
 
 ## What it can do through the escape hatch — no dedicated tool yet
 
-These work through `lom_call` / `lom_set` right now. **Verified** means it was run
-against a real Live and observed to work.
+These work through `lom_call` / `lom_set` right now. **Every row below was run against
+a real Live and observed to work** — there is nothing here on the strength of the
+documentation alone.
 
-| Want | How | Status |
-|---|---|---|
-| Delete a device | `lom_call` on the track: `delete_device(index)` | untested |
-| Move or reorder devices | `lom_call` on song: `move_device(...)` | untested |
-| Rename a device | `lom_set` its `name` | untested |
-| Create a return track | `lom_call` on song: `create_return_track()` | untested |
-| Duplicate a scene | `lom_call` on song: `duplicate_scene(index)` | untested |
-| **Arrangement locators (markers)** | `set_or_delete_cue` at the playhead; `CuePoint.name` writes; `jump()` moves there | **verified** |
-| **Track input/output routing** | read `available_input_routing_types`, write `input_routing_type` with that element's `$obj` | **verified** |
-| **Record Session clips into the Arrangement** | set `record_mode`, fire the clip | **verified** |
-| **Song loop brace, punch in/out, overdub** | `lom_set` on song | **verified** |
-| **Move an audio clip's warp markers** | `move_warp_marker(beat, distance)` | **verified** |
-| **Rewrite a tuning system** | `lom_set` `note_tunings` (absolute cents per degree) | **verified on 72-EDO** |
-| Read take lanes (comping) | `take_lanes` on a track | read-only |
-| Capture MIDI just played | `capture_midi()` | untested |
-| Crop a clip, duplicate its loop or a region | `crop()`, `duplicate_loop()`, `duplicate_region(...)` | untested |
-| Tap tempo, nudge, scrub | `tap_tempo()`, `jump_by(...)`, `scrub_by(...)` | untested |
+| Want | How |
+|---|---|
+| Delete a device | `lom_call` on the track: `delete_device(index)` |
+| Move or reorder devices | `lom_call` on song: `move_device(device, track, position)` — see the caveat below |
+| Rename a device | `lom_set` its `name` |
+| Create a return track | `lom_call` on song: `create_return_track()` — every track gains a send |
+| Duplicate a scene | `lom_call` on song: `duplicate_scene(index)` |
+| Arrangement locators (markers) | `set_or_delete_cue` at the playhead; `CuePoint.name` writes; `jump()` moves there |
+| Track input/output routing | read `available_input_routing_types`, write `input_routing_type` with that element's `$obj` |
+| Record Session clips into the Arrangement | set `record_mode`, fire the clip |
+| Song loop brace, punch in/out, overdub | `lom_set` on song |
+| Move an audio clip's warp markers | `move_warp_marker(beat, distance)` |
+| Rewrite a tuning system | `lom_set` `note_tunings` (absolute cents per degree) — verified on 72-EDO |
+| Crop a clip, duplicate its loop or a region | `crop()`, `duplicate_loop()`, `duplicate_region(...)` |
+| Capture MIDI just played | `capture_midi()` — does nothing, without complaint, when there is nothing to capture |
+| Tap tempo, nudge, scrub | `tap_tempo()`, `jump_by(...)`, `scrub_by(...)` |
+| Read take lanes (comping) | `take_lanes` on a track — read-only |
+
+**Two caveats worth their own paragraph.** `move_device` returns the index the device
+ended up at, and **Live enforces the chain's ordering rules**: on a MIDI track an audio
+effect cannot be moved in front of the instrument. An illegal move is not an error — it
+returns the unchanged index and nothing happens, so compare before and after (or ask
+`find_device_position` first). And `jump_by` moves relative to `song.start_time`, which
+is where playback would begin and **not always the visible playhead**: it was seen to
+land at beat 4 from a playhead sitting at 39.8. When you want an absolute move, use the
+`transport` tool with a position.
 
 **Microtonality is possible.** With a tuning file activated by hand in Live, the whole
 scale is readable and writable: `note_tunings` is a plain list of absolute cents per

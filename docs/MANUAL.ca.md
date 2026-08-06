@@ -51,7 +51,7 @@ Dues regles governen tota la resta:
 | Una pista a fons: mescla, dispositius, **dins dels racks**, clips | `get_track` |
 | Les propietats d'un clip, i opcionalment les seves notes | `get_clip` |
 | Les notes d'un clip, o **estadístiques en lloc de notes** | `get_notes(summary=true)` |
-| Què ha canviat des de l'última mirada | `watch` + `get_changes` |
+| Què ha canviat des de l'última mirada | `watch`, `get_changes`, `unwatch` |
 
 `get_track` recorre les cadenes dels racks: un rack mostra les seves cadenes, cada
 cadena els seus dispositius, i cada dispositiu imbricat porta un localitzador llest per
@@ -70,9 +70,13 @@ distingeixes una presa tocada d'una de programada).
 |---|---|
 | Un clip creat, anomenat, acolorit i omplert — un sol pas d'undo | `create_clip` |
 | Edició quirúrgica de notes per identificador | `edit_notes` |
+| Reanomenar, recolorir, canviar loop points o compàs | `set_clip` |
 | Quantitzar | `quantize_clip` |
+| Copiar un clip de Session a un altre slot | `duplicate_clip_to_slot` |
+| Buidar un slot de Session | `delete_clip` |
 | Un clip directament a l'Arranjament | `create_arrangement_clip` |
 | Copiar un clip de Session a l'Arranjament | `duplicate_clip_to_arrangement` |
+| Llistar, editar o esborrar clips de l'Arranjament | `list_arrangement_clips`, `set_arrangement_clip`, `delete_arrangement_clip` |
 | Importar un fitxer d'àudio | `import_audio_clip` |
 | Estructura que un humà pugui veure | `create_reference_clip` |
 
@@ -94,6 +98,7 @@ volum en **dB o normalitzat**, pan, sends), `delete_track`, `duplicate_track`;
 |---|---|
 | Trobar alguna cosa carregable | `browse` |
 | Carregar-la | `load_device` |
+| Rellegir el navegador després d'instal·lar un pack | `refresh_browser_index` |
 | Posar un paràmetre — inclosos macros de rack i dispositius dins de racks | `set_device_parameter` |
 | Dibuixar automatització a partir d'uns quants punts | `automate_parameter` |
 | Esborrar automatització | `clear_automation` |
@@ -118,26 +123,36 @@ la necessitis — la secció següent diu què et dona això avui.
 
 ## Què pot fer per l'escotilla — encara sense eina pròpia
 
-Això funciona avui amb `lom_call` / `lom_set`. **Verificat** vol dir que s'ha executat
-contra un Live real i s'ha observat que funciona.
+Això funciona avui amb `lom_call` / `lom_set`. **Cada fila d'aquí sota s'ha executat
+contra un Live real i s'ha observat que funciona** — no hi ha res que hi consti només
+per la documentació.
 
-| Vols | Com | Estat |
-|---|---|---|
-| Esborrar un dispositiu | `lom_call` sobre la pista: `delete_device(índex)` | no provat |
-| Moure o reordenar dispositius | `lom_call` sobre song: `move_device(...)` | no provat |
-| Reanomenar un dispositiu | `lom_set` del seu `name` | no provat |
-| Crear una pista de retorn | `lom_call` sobre song: `create_return_track()` | no provat |
-| Duplicar una escena | `lom_call` sobre song: `duplicate_scene(índex)` | no provat |
-| **Locators (marcadors) d'Arranjament** | `set_or_delete_cue` al capçal; `CuePoint.name` s'escriu; `jump()` hi porta | **verificat** |
-| **Routing d'entrada/sortida de pista** | llegir `available_input_routing_types`, escriure `input_routing_type` amb l'`$obj` d'aquell element | **verificat** |
-| **Gravar clips de Session a l'Arranjament** | posar `record_mode`, disparar el clip | **verificat** |
-| **Loop brace, punch in/out, overdub** | `lom_set` sobre song | **verificat** |
-| **Moure warp markers d'un clip d'àudio** | `move_warp_marker(beat, distància)` | **verificat** |
-| **Reescriure un sistema d'afinació** | `lom_set` de `note_tunings` (cents absoluts per grau) | **verificat amb 72-EDO** |
-| Llegir take lanes (comping) | `take_lanes` d'una pista | només lectura |
-| Capturar el MIDI acabat de tocar | `capture_midi()` | no provat |
-| Retallar un clip, duplicar-ne el loop o una regió | `crop()`, `duplicate_loop()`, `duplicate_region(...)` | no provat |
-| Tap tempo, empènyer, escrubar | `tap_tempo()`, `jump_by(...)`, `scrub_by(...)` | no provat |
+| Vols | Com |
+|---|---|
+| Esborrar un dispositiu | `lom_call` sobre la pista: `delete_device(índex)` |
+| Moure o reordenar dispositius | `lom_call` sobre song: `move_device(dispositiu, pista, posició)` — vegeu l'advertiment de sota |
+| Reanomenar un dispositiu | `lom_set` del seu `name` |
+| Crear una pista de retorn | `lom_call` sobre song: `create_return_track()` — cada pista hi guanya un send |
+| Duplicar una escena | `lom_call` sobre song: `duplicate_scene(índex)` |
+| Locators (marcadors) d'Arranjament | `set_or_delete_cue` al capçal; `CuePoint.name` s'escriu; `jump()` hi porta |
+| Routing d'entrada/sortida de pista | llegir `available_input_routing_types`, escriure `input_routing_type` amb l'`$obj` d'aquell element |
+| Gravar clips de Session a l'Arranjament | posar `record_mode`, disparar el clip |
+| Loop brace, punch in/out, overdub | `lom_set` sobre song |
+| Moure warp markers d'un clip d'àudio | `move_warp_marker(beat, distància)` |
+| Reescriure un sistema d'afinació | `lom_set` de `note_tunings` (cents absoluts per grau) — verificat amb 72-EDO |
+| Retallar un clip, duplicar-ne el loop o una regió | `crop()`, `duplicate_loop()`, `duplicate_region(...)` |
+| Capturar el MIDI acabat de tocar | `capture_midi()` — no fa res, i no es queixa, si no hi ha res a capturar |
+| Tap tempo, empènyer, escrubar | `tap_tempo()`, `jump_by(...)`, `scrub_by(...)` |
+| Llegir take lanes (comping) | `take_lanes` d'una pista — només lectura |
+
+**Dos advertiments que mereixen paràgraf propi.** `move_device` retorna l'índex on ha
+acabat el dispositiu, i **Live fa complir les regles d'ordre de la cadena**: en una
+pista MIDI, un efecte d'àudio no es pot posar davant de l'instrument. Un moviment
+il·legal no dona error — retorna l'índex sense canviar i no passa res, així que compara
+abans i després (o pregunta-ho abans amb `find_device_position`). I `jump_by` es mou
+relatiu a `song.start_time`, que és on començaria la reproducció i **no sempre és el
+capçal visible**: se l'ha vist aterrar al beat 4 amb el capçal a 39,8. Quan vulguis un
+moviment absolut, fes servir l'eina `transport` amb una posició.
 
 **La microtonalitat és possible.** Amb un fitxer d'afinació activat a mà dins de Live,
 tota l'escala es llegeix i s'escriu: `note_tunings` és una llista plana de cents

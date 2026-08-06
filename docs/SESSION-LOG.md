@@ -156,6 +156,24 @@ written to a frozen track. None of them were predicted.
 
 ## Log
 
+### 2026-08-05 — a user's manual, and the rows it refused to leave untested
+
+- `459c262` **`docs/MANUAL.md` and `docs/MANUAL.ca.md`** — what the server can do, what
+  it can *reach* through the escape hatch, and what Live's API genuinely does not
+  offer. Three levels, because a binary can/cannot would have been false. English is
+  canonical; the Catalan translation says so at the top.
+- **Writing it turned up capabilities nobody had noticed**: `delete_device`,
+  `move_device`, `create_return_track`, `duplicate_scene`, `crop`, `duplicate_loop`,
+  `duplicate_region`, `capture_midi`, `tap_tempo`, `jump_by`, `scrub_by` — all sitting
+  in the inventory, none exercised. The user asked whether they had been tested. They
+  had not, so they were: **every one now verified** against the loaded Multiverse on
+  ZZ scratch with save-and-restore for the set's own state (tempo, playhead, scene
+  count, returns). HANDOFF §7 carries the two with real semantics — `move_device`
+  silently refuses a move that breaks Live's chain ordering, and `jump_by` is relative
+  to `start_time`, not to the visible playhead.
+- The manual's tool names were cross-checked against `server.py`: no invented names,
+  and eight real tools it had failed to mention were added.
+
 ### 2026-08-05 — microtonality answered: note_tunings writes, and restores bit-exact
 
 - `6e7cab2` **Script 0.3.2**: a Boost setter that declares `boost::python::tuple`
