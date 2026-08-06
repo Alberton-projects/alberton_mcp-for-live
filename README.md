@@ -44,7 +44,7 @@ Run everything from the repository root — the folder `git clone` gave you.
    runs it. 36 checks; if it cannot connect it tells you what to look at. Do not go
    on until this passes.
 3. **Install the server's dependencies and test them**:
-   `uv run --project server pytest` (149 tests, no Ableton needed). You need `uv`
+   `uv run --directory server pytest` (149 tests, no Ableton needed). You need `uv`
    first — it is not part of macOS; [server/README.md](server/README.md) has the
    one-line install.
 4. **Point your MCP client at the server** —

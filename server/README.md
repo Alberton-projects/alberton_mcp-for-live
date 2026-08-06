@@ -15,14 +15,20 @@ what fetches a suitable Python (3.10+) and the dependencies:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Then, from the repository root, check that the package builds and the server works:
+Then check that the package builds and the server works:
 
 ```
-uv run --project server pytest
+uv run --directory server pytest
 ```
 
 149 tests, no Ableton required — including one that boots this server over a real
 stdio transport and talks to it as an MCP client would.
+
+`--directory server` matters: pytest's configuration (`asyncio_mode = "auto"`) lives
+in `server/pyproject.toml`, and pytest only finds it by starting there. Invoked from
+the repository root it silently runs without that setting and every async test fails
+on `async def functions are not natively supported` — 144 failures that mean nothing
+except that the command was wrong. `cd server && uv run pytest` is the same thing.
 
 **You do not start this server yourself.** Your MCP client spawns it and speaks
 JSON-RPC to it over stdin/stdout, which is why the command below is in the client's
@@ -75,10 +81,8 @@ directory, and the `alberton-mcp` entry point.
 
 ## Tests
 
-From the repository root:
-
 ```
-uv run --project server pytest
+uv run --directory server pytest
 ```
 
 149 tests, no Ableton required — they run against an in-process fake bridge
