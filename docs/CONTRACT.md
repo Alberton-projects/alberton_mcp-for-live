@@ -73,6 +73,7 @@ Event (script → server, subscriptions only; has no `id`, carries `sub`):
 | Boost enum value | integer (names and values are in the inventory) |
 | LOM object | `{"$obj": {"class": "Track", "path": "song.tracks.0", "ptr": 4933587424}}` — `path` is best-effort and null for objects with no canonical location (envelopes, Arrangement clips, device parameters); `ptr` is Live's own object identity and is always present. Prefer `ptr` when a path could have gone stale: a human editing in Live invalidates indices between one op and the next |
 | LOM vector | `{"$vec": {"class": "Track", "len": 4}}` (elements addressable by path index) |
+| Python list/tuple | plain JSON array of encoded values — some properties return these instead of a Boost vector (`TuningSystem.note_tunings` arrives as its 72 floats, no stub) |
 | anything else | `{"$repr": "<...>", "class": "..."}` — should not appear; file a gap |
 
 Times and durations are always absolute beats as floats (clip-local beats measured from
@@ -124,6 +125,11 @@ the op.
 values of exactly the props written, re-read after writing. The caller compares; a
 silent clamp (e.g. tempo limits) is thereby visible. Partial failure fails the op with
 `error.prop` set and no further props attempted (wrap multi-prop invariants in `batch`).
+Two caveats from the field: a handful of properties apply **one tick late**
+(`record_mode`, `loop`, `punch_in/out` — the same-op read-back shows the old value),
+and a JSON array is delivered as a Python list with a tuple retry on refusal, because
+some Boost setters declare `boost::python::tuple` (`note_tunings` does; since script
+0.3.2).
 
 **`call`** `{path, method, args: [...], kwargs: {...}}` → `{"value": <encoded>}`.
 Arguments accept the same encoding as A.4 in reverse; `$obj` references are resolved to

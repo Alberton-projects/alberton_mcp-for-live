@@ -3,7 +3,7 @@
 An [MCP](https://modelcontextprotocol.io) server plus a companion Ableton Live Remote
 Script that let an LLM read and write a Live set through the Live Object Model (LOM).
 
-> **Status: working, not yet packaged for third parties** (2026-08-03). 46 tools covering
+> **Status: working, not yet packaged for third parties** (2026-08-05). 46 tools covering
 > Session and Arrangement writing, clip automation, audio import, device and macro
 > control, and change subscriptions. Plan and findings:
 > [docs/SESSION-LOG.md](docs/SESSION-LOG.md).
@@ -43,7 +43,7 @@ outcome are welcome.
 
 ## Testing
 
-142 unit tests run without Ableton, against an in-process fake of the bridge that speaks
+149 unit tests run without Ableton, against an in-process fake of the bridge that speaks
 the real wire protocol over real TCP — that is the CI suite. Eight further probes run
 against a live instance and are what actually found the bugs: contract compliance,
 end-to-end tool behaviour, connection lifecycle and robustness, every tool in the

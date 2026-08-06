@@ -40,7 +40,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`
 uv run --project server pytest
 ```
 
-142 tests, no Ableton required — they run against an in-process fake bridge
+149 tests, no Ableton required — they run against an in-process fake bridge
 (real TCP, real framing), plus a smoke test that boots the server over a real
 stdio transport and checks every tool's schema and its behaviour when Live is
 absent. This is the CI suite.
