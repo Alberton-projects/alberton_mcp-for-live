@@ -156,6 +156,28 @@ written to a frozen track. None of them were predicted.
 
 ## Log
 
+### 2026-08-05 — the unproven, proven: 33 green checks across four probe runs
+
+- **Cue points, transport flags, routing, take lanes, warp markers, ten devices —
+  contrasted** (HANDOFF §7 has the details). The headlines: an Arrangement-locators
+  tool is buildable today (full CuePoint lifecycle works); routing is assignable by
+  passing an available-list `$obj`; the deferred-apply map is measured (`record_mode`,
+  `loop`, `punch_in/out` one tick late; `loop_start/length`, `arrangement_overdub`
+  immediate); `move_warp_marker` works and `add_warp_marker` is unconstructible;
+  Drum Sampler is class `DrumCellDevice`; loading a second instrument REPLACES the
+  first. Probe scripts stayed in scratch; the findings are the deliverable.
+- `9fdb98b` **The distiller was eating real methods.** Everything named `add_*` or
+  `remove_*` was dropped from the baked summary as presumed listener machinery, so
+  `lom_call` refused `add_new_notes`, `remove_notes_by_id`, `add_warp_marker` and
+  three more with "no method in the inventory" while Live would have taken them.
+  Found because a probe's "not constructible" verdict was too quick to be Live's —
+  it was ours. Filter narrowed to `*_listener` machinery; six methods recovered.
+- **TET-12 revisited at the user's correction** (HANDOFF §4): the decision had rested
+  on "the LOM cannot do microtonality", which is false — an active TuningSystem's
+  `note_tunings` are RW in cents. What the LOM cannot do is *activate* one; that
+  takes a hand-loaded tuning file, after which writing tunings is one probe away.
+  TET 12 stays the scope by choice now, not by believed impossibility.
+
 ### 2026-08-05 — recording into the Arrangement, and the map of the unproven
 
 - **Session→Arrangement recording verified over the wire** on the loaded Multiverse:

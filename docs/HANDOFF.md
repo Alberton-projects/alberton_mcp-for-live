@@ -148,6 +148,13 @@ designing up front.
 **Equal temperament.** The user has decided to work in TET 12 only. Microtonality
 (Nuzic supports up to TET 53) is explicitly out of scope. This removes the hardest mapping
 problem — Live and MIDI are integer 12-TET — and should not be reintroduced casually.
+— Revisited 2026-08-05 at the user's correction: the decision had rested on "the LOM
+cannot do it", which is not what the LOM says. `Song.tuning_system` is read-only and
+None until a tuning is activated by hand (no LOM path loads one), but the active
+TuningSystem's `note_tunings` (in cents), `reference_pitch`, `name` and note range are
+all RW with listeners — microtonality is drivable the moment a tuning file is active.
+Writing `note_tunings` stays untested until one is. TET 12 remains the working scope,
+by choice now rather than by believed impossibility.
 
 **Publication.** Build the tool the user needs first; decide about publishing later. The
 design is general-purpose regardless, so publishing costs little extra when the time comes.
@@ -436,28 +443,43 @@ probe:
   afterwards; restore it to what it was, never impose a value (a blanket reset on an
   abort path cost this probe its first run).
 
-**What remains uncontrasted against Live** (2026-08-05, from the second dump's 53
-never-met classes minus what the tools battle-test daily — the `MidiNote` family and
-browser items are exercised by every note edit and browse):
+**The uncontrasted surfaces were then contrasted** (2026-08-05, three scratch probes,
+every check green, all on ZZ material or save-and-restore):
 
-- **Worth a deliberate test, someday a tool**: `CuePoint` and
-  `Song.set_or_delete_cue`/`jump_to_next_cue` (Arrangement locators — structure made
-  visible, but the set has none); track routing (`input_routing_type` and friends, 42
-  inventory mentions, never read or written); `TakeLane` (met in the dump, comping
-  never driven); the transport/record surface `punch_in`/`punch_out`,
-  `arrangement_overdub`, `capture_midi`, `trigger_session_record`, song `loop` /
-  `loop_start` / `loop_length`; audio-clip warping writes (`WarpMarker` met,
-  never moved).
-- **Unused Live devices** (theory until someone loads one; the generic tools should
-  handle them unchanged): Drift, Wavetable, Meld, Roar, Shifter, SpectralResonator,
-  HybridReverb, DrumCell, Looper, CcControl.
-- **Out of scope by decision**: `TuningSystem`, `ReferencePitch`,
-  `PitchClassAndOctave` (the TET-12 decision, §4).
-- **Not applicable**: Boost vectors, dialogs, licensing, Push feedback rules, the
-  `EnvelopeEvent` family (established unconstructible over the wire).
-- **Vetoed by the inventory**: clip follow actions and rack macro variants do **not
-  exist** in Live 12.4.3's LOM — two obvious-sounding future features that are not
-  buildable. (`Variants` is a licensing class.)
+- **Cue points: the full lifecycle works over the wire.** `set_or_delete_cue` creates
+  a marker at the playhead (auto-named "1"), `CuePoint.name` writes, `time` reads,
+  `jump()` moves the playhead there, `can_jump_to_next/prev_cue` answer correctly, and
+  toggling at the cue's time deletes it. An Arrangement-locators tool is buildable
+  today; nothing else in the way.
+- **The deferred-apply map of Song flags**, measured: `record_mode`, `loop`,
+  `punch_in`, `punch_out` apply on the NEXT tick (same-op read-back shows the old
+  value); `loop_start`, `loop_length`, `arrangement_overdub` apply immediately.
+- **Routing is readable and assignable.** `RoutingType` carries `display_name`,
+  `category` and `attached_object`; `available_input_routing_types` on a MIDI track
+  lists every track as a MIDI source (category 4) plus All Ins (7) and No Input (6);
+  writing `input_routing_type` works by passing the `$obj` of an element of the
+  available list. Verified end to end on a scratch track.
+- **Take lanes read fine** (a real track: two lanes, each with `name` and its own
+  `arrangement_clips`). Comping writes not attempted.
+- **Warp markers**: readable (`{beat_time, sample_time}`),
+  `move_warp_marker(beat, distance)` works over the wire;
+  `add_warp_marker` is **unconstructible** — Live wants a `TWarpMarker` C++ object
+  and no converter takes a dict, the `EnvelopeEvent` family grows by one. (Untried:
+  passing an existing marker's `$obj` from another clip. `remove_warp_marker(beat)`
+  has a float signature and should work; untested.)
+- **All ten never-met Live devices confirmed live**, loaded onto a scratch track via
+  browse: Drift (66 parameters), Wavetable (93), Meld (129), **Drum Sampler = class
+  `DrumCellDevice`** (40), Roar (91), Shifter (36), Spectral Resonator (20), Hybrid
+  Reverb (54), Looper (9), CC Control (17). Loading a second instrument REPLACES the
+  first on a track — an append assumption cost the sweep its first run.
+
+Still uncontrasted, each for a stated reason: `TuningSystem` writes (needs a tuning
+file activated by hand first — see §4), `capture_midi` / `trigger_session_record` and
+the recording behaviour of punch/overdub (the flags write; nobody has recorded through
+them), comping writes on take lanes. Not applicable: Boost vectors, dialogs,
+licensing, Push feedback rules, `EnvelopeEvent` construction. **Vetoed**: clip follow
+actions and rack macro variants do not exist in Live 12.4.3's LOM, and
+`add_warp_marker` cannot be fed from the wire.
 
 ---
 
