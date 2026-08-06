@@ -5,6 +5,8 @@ companion Remote Script let an AI assistant read and write a Live set for you �
 tracks and clips, write and edit MIDI, drive devices, draw automation, build
 arrangements with prompts.
 
+*També en català: [README.ca.md](README.ca.md).*
+
 > **Status** (2026-08-06): working. An AI that had never seen this project installed
 > it from this URL on a clean machine and was making music in the open set four
 > minutes later. Tested deeply on one setup so far — see *What it has been tested on*.
