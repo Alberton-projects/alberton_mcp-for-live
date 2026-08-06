@@ -21,8 +21,8 @@ in HANDOFF, the *spec* in CONTRACT.
 | Remote Script | `remote_script/Alberton_MCP/`, v0.3.2 |
 | Server | `server/`, package `alberton-mcp` 0.1.0, 46 tools, `mcp<2` pinned |
 | Verified against | Ableton Live 12.4.3 Suite, macOS Apple Silicon, embedded Python 3.11.6 — and the README says so, promising nothing more |
-| Open work | One item: the clean-install rehearsal. |
-| Published | No. Publication is deliberately the last step. |
+| Open work | None blocking. The clean-install rehearsal is done (2026-08-06); what remains is the publication decision itself. |
+| Published | No. Publication is deliberately the last step — and now the only one left. |
 
 **Tests, all green.** Everything was re-verified 2026-08-05 after the review, against
 the loaded 29-track / 181-scene *Alberton Multiverse*: `live_verify` 23/23,
@@ -133,9 +133,11 @@ Learned by getting it wrong; none of it is obvious from the code.
 
 ## Open — decided but not built
 
-1. **Clean-install rehearsal** — nobody has ever followed the README from nothing, and
-   it is the last thing between here and publication. The server README's Claude Desktop
-   snippet still carries this machine's absolute paths; that is part of this item.
+Nothing. The last item — the clean-install rehearsal — was run on 2026-08-06 and is
+recorded below. One residual, too small to be an item: **the Claude Desktop entry has
+still only ever been exercised by its author.** Its known defect (hardcoded paths) is
+fixed, but nobody has followed the corrected instructions into a working client. That
+is a five-minute check for whoever first installs this from the published repository.
 
 Everything else on this list is done. Testing found, in order: the stringified-locator
 bug, twelve unusable tool descriptions, a stale watch registry, a `gone` event that never
@@ -155,6 +157,42 @@ written to a frozen track. None of them were predicted.
 ---
 
 ## Log
+
+### 2026-08-06 — the clean install, rehearsed by someone who knew nothing
+
+The last gate before publication, run the only honest way available: **a second macOS
+user account on the same Mac**, following the repository's own README. That account had
+no `uv`, an empty Remote Scripts folder, no venv, no caches — and the person walking it
+could not ask the author, because the author was on the other side of a fast user
+switch. Six defects, every one fixed the same day, none of them findable from here:
+
+| What a newcomer met | Fixed |
+|---|---|
+| `wire_probe.py` — the first command the README names — answered a closed Live with a raw Python traceback | `b18338c` |
+| The Remote Script install block assumed you stood inside `remote_script/Alberton_MCP/`, while the verify command three paragraphs down assumed the repository root. Neither said so; a fresh clone lands at the root and gets *No such file or directory* | `32ca1e4` |
+| `uv` was never mentioned as a prerequisite. It is not part of macOS | `616404e` |
+| `uv run --project server alberton-mcp` was presented as "how to run the server". Run it by hand and it sits mute, then reports *Internal Server Error* at the first newline — an stdio MCP server is spawned by a client, not typed at | `616404e` |
+| The Claude Desktop snippet carried this machine's absolute paths, with nothing saying which parts were the reader's to change | `616404e` |
+| The quick start sent you to configure a client before anything had shown the bridge worked | `619da11` |
+| **`uv run --project server pytest` — the documented test command — produced 144 failures on a perfectly good checkout.** pytest resolves its config upward from the arguments, so from the repository root it never reaches `server/pyproject.toml` and `asyncio_mode = auto` is never applied | `1f7919a` |
+
+The last one is the one to remember. It had been wrong since the file was written, and
+it survived because **nobody had ever run the documented command** — development used
+`cd server && python -m pytest`, which works by accident of the working directory. A
+wall of 144 red tests is exactly what makes a stranger conclude they broke it and walk
+away. Reproduced here the moment it was reported: identical failure, same count.
+
+Everything else passed on that clean account, and two of them without installing
+anything at all: `wire_probe` 36/36, `live_verify` 23/23 (both on the Python macOS
+ships), then `uv` fetching Python 3.13 and 42 packages unaided, and `pytest` 149/149
+— which includes the smoke test that boots the server over a real stdio transport and
+talks to it as an MCP client. So the MCP surface is proven on a clean machine without
+anyone logging into a client anywhere.
+
+Two facts about the environment worth keeping: **the bridge port is per-machine, not
+per-account** — only one Live can hold 17853 whichever user runs it — and, following
+from that, **any other local user can drive your Live**, because localhost is not the
+same boundary as "your session".
 
 ### 2026-08-05 — a user's manual, and the rows it refused to leave untested
 
