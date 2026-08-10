@@ -158,6 +158,36 @@ written to a frozen track. None of them were predicted.
 
 ## Log
 
+### 2026-08-06 — driven for real, and MIDI CC found its way in
+
+An afternoon using the server as an instrument rather than testing it — reading the
+author's own piano piece, analysing it, and writing derived versions back. Two things
+came out of it that belong here.
+
+- **MIDI CC is unwritable, and a plugin can hand you the parameter anyway.** Every
+  envelope entry point in the LOM takes a `DeviceParameter`, so CC64 and friends are
+  unreachable. But Pianoteq's Configure panel publishes its sustain pedal to the host,
+  and it then appears in `device.parameters` as an ordinary automatable control —
+  confirmed by reading it back the moment the user published it. Generalizes to any
+  plugin control: what the plugin exposes is reachable, what it keeps is not.
+  HANDOFF §7, and both manuals now carry the limit with its escape hatch.
+- **The read-transform-write pattern is documented** (both manuals): read notes,
+  transform them outside Live where there is real computation, write to a new track.
+  Proved by turning a rubato performance into a quantized two-staff engraving copy
+  while the original stayed untouched one track away.
+
+The scripts that did it stayed in scratch, deliberately: the rule that made the hand
+split work ("the third attack of each rolled gesture belongs to the left hand") is a
+property of that piece's gesture, not of piano engraving, and `tools/` means probes
+that verify the server against Live. That work is client work — the same shelf as the
+Phase 4 client — and the server earning its keep is precisely that it made the work
+possible from outside.
+
+Also corrected in passing, by the author: **half-pedalling is standard technique**, so
+a sustain pedal at an intermediate value is a musical choice, not a mistake. The
+assistant had dismissed it while proposing `hold` mode. Recorded because it
+generalizes: do not infer that a control is binary from how it is usually drawn.
+
 ### 2026-08-06 — the cold model: from a URL to a polyrhythm in one sitting
 
 The test this project was built to pass. ChatGPT Desktop on the second user account —

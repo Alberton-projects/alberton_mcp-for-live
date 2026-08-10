@@ -119,6 +119,20 @@ call. The attempt is safe: the whole batch refuses and nothing is written.
 directly. Anything Live's API offers is reachable through these on the day you need
 it — see the next section for what that buys you today.
 
+### The pattern worth knowing: read, transform outside, write back
+
+The tools are primitives, and the interesting work is usually a loop around them:
+**read the notes, transform them somewhere with real computation, write the result to
+a new track.** Nothing is overwritten, both versions stay side by side, and you can
+listen to the difference.
+
+A real example, done in this project's own set: reading a rubato piano performance
+(`get_notes`), quantizing it and splitting the hands outside Live, then writing the
+result to two fresh tracks with `create_arrangement_clip` — an engraving copy for a
+notation program, with the played original untouched a track away. The transformation
+itself was ordinary code; the server only had to be honest about what was in the clip
+and accept exactly what came back.
+
 ---
 
 ## What it can do through the escape hatch — no dedicated tool yet
@@ -194,6 +208,13 @@ of steps.
 
 **Change the reference pitch (A = 440).** `ReferencePitch.frequency` has no setter.
 The diapason is whatever the tuning file says.
+
+**Write MIDI CC — pedal, modwheel, breath.** Every envelope in Live's API belongs to a
+*device parameter*, and a MIDI controller is not one. There is a way round it that
+costs nothing: **most plugins can publish a control to the host** (Pianoteq's Configure
+panel does this for its sustain pedal). Once published it shows up as an ordinary
+parameter and `automate_parameter` drives it like any other. What it will not do is
+travel to an exported MIDI file — it is clip automation, not a CC message.
 
 **Export, render or bounce audio.** Nothing in the LOM does it, at all.
 

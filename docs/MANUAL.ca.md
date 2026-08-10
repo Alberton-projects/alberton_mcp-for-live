@@ -124,6 +124,20 @@ una segona crida. L'intent és segur: el lot sencer refusa i no s'escriu res.
 directament. Qualsevol cosa que ofereixi l'API de Live és abastable per aquí el dia que
 la necessitis — la secció següent diu què et dona això avui.
 
+### El patró que val la pena saber: llegir, transformar fora, tornar a escriure
+
+Les eines són primitives, i la feina interessant sol ser un bucle al seu voltant:
+**llegeix les notes, transforma-les on hi hagi càlcul de debò, i escriu el resultat en
+una pista nova.** No se sobreescriu res, les dues versions queden de costat, i pots
+escoltar la diferència.
+
+Un exemple real, fet al set d'aquest mateix projecte: llegir una interpretació de piano
+amb rubato (`get_notes`), quantitzar-la i separar-ne les mans fora de Live, i escriure
+el resultat en dues pistes noves amb `create_arrangement_clip` — una còpia per gravar
+partitura, amb l'original tocat intacte a una pista de distància. La transformació era
+codi corrent; el servidor només havia de ser honest sobre què hi havia al clip i
+acceptar exactament el que li tornava.
+
 ---
 
 ## Què pot fer per l'escotilla — encara sense eina pròpia
@@ -201,6 +215,14 @@ forma que has demanat, feta de passos.
 
 **Canviar el diapasó (La = 440).** `ReferencePitch.frequency` no té setter. El diapasó
 és el que digui el fitxer d'afinació.
+
+**Escriure CC de MIDI — pedal, modulació, alè.** Totes les envolupants de l'API de
+Live pertanyen a un *paràmetre de dispositiu*, i un controlador MIDI no ho és. Hi ha
+una volta que no costa res: **la majoria de plugins poden publicar un control a
+l'amfitrió** (el panell Configure de Pianoteq ho fa amb el seu pedal de ressonància).
+Un cop publicat, apareix com un paràmetre qualsevol i `automate_parameter` el governa
+com qualsevol altre. El que no farà és viatjar a un fitxer MIDI exportat: és
+automatització de clip, no un missatge de CC.
 
 **Exportar, renderitzar o fer bounce d'àudio.** No hi ha absolutament res al LOM.
 

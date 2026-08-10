@@ -404,6 +404,28 @@ config). The legacy Remote Script folder and its Control Surface slot can be ret
 leisure; the only feature gap until v1.1 is audio-clip import.
 
 
+**MIDI CC cannot be written — but a plugin can hand you the parameter anyway.**
+**[verified 2026-08-06]** Every envelope entry point in the LOM takes a
+`DeviceParameter`: `Clip.create_automation_envelope`, `automation_envelope`,
+`clear_envelope`. A MIDI controller — CC64 sustain being the obvious one — is not a
+DeviceParameter, and nothing in the inventory reaches a clip's MIDI-controller
+envelopes. So a caller cannot write pedal, modwheel, breath or any other CC.
+
+The way round it is not in Live at all: **publish the parameter in the plugin.**
+Pianoteq's Configure panel exposes its sustain pedal to the host, and it then appears
+in `device.parameters` as an ordinary `Sustain Pedal`, range 0–1, automatable by
+`automate_parameter` like any cutoff. Confirmed by reading it back the moment the user
+published it. This generalizes past pedals: **any plugin control the plugin chooses to
+expose becomes reachable; anything it keeps to itself stays invisible.** Worth telling
+a caller who asks for CC, since the fix is one panel away.
+
+Two things it does not solve. The value lands in the *clip's automation*, not in the
+MIDI stream, so it does not travel to an exported MIDI file — pedal for a score is a
+separate job, done in the notation program. And the pedal is a **continuous** control:
+half-pedalling is standard piano technique, so intermediate values and `ramp` mode are
+musical choices, not mistakes. (Said here because the author had to correct the
+assistant on exactly that.)
+
 **A Max for Live device's blob parameters are invisible to the LOM, and they can hold the
 device's entire musical content.** A `live.*` object whose parameter is declared
 `parameter_type 3` (blob) — `live.step` is the common case — is absent from
