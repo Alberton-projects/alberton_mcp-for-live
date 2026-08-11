@@ -158,6 +158,18 @@ written to a frozen track. None of them were predicted.
 
 ## Log
 
+### 2026-08-11 — the install instruction had the order backwards
+
+Found while scripting a screen recording of the install: having to choose a shooting
+order made the contradiction plain.
+
+- `446aa7e` **Live must be closed while the script is installed, not open.** Live scans
+  Remote Scripts only at startup, so a musician following the old requirement ("about
+  ten minutes, with Live open") would either have to restart or find no `Alberton MCP`
+  in the Control Surface list and conclude the install had failed. Both READMEs now ask
+  for Live closed and fold opening it into step 1, with the restart kept as the recovery
+  for anyone who already had it running. Still three things, not four.
+
 ### 2026-08-06 — driven for real, and MIDI CC found its way in
 
 An afternoon using the server as an instrument rather than testing it — reading the
