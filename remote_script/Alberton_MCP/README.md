@@ -28,7 +28,8 @@ scope note in the top-level README.
 
 ## Run
 
-1. Restart Live (it only scans Remote Scripts at startup).
+1. Start Live — or restart it, if it was already running (it only scans Remote Scripts
+   at startup).
 2. Preferences → Link, Tempo & MIDI → any free Control Surface slot → `Alberton MCP`
    (Input/Output: None).
 3. The status bar shows `Alberton: listening on 127.0.0.1:17853`.
