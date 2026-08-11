@@ -169,6 +169,9 @@ order made the contradiction plain.
   in the Control Surface list and conclude the install had failed. Both READMEs now ask
   for Live closed and fold opening it into step 1, with the restart kept as the recovery
   for anyone who already had it running. Still three things, not four.
+- `2b5c232` The Remote Script's own README now says **start** Live — or restart it, if
+  it was already running — instead of assuming a restart. Copying the two files with
+  Live closed is the ordinary case; the restart was the exception described as the rule.
 
 ### 2026-08-06 — driven for real, and MIDI CC found its way in
 
