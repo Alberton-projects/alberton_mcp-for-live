@@ -27,7 +27,7 @@ Necessites:
 - un **assistent d'IA en aquell ordinador que pugui executar ordres i connectar-se a
   servidors MCP** — Claude Desktop o Claude Code, ChatGPT Desktop amb Codex, o
   similar,
-- uns **deu minuts**, amb Live obert.
+- uns **deu minuts**, amb **Live tancat** — l'obriràs quan l'script ja hi sigui.
 
 Obre l'assistent i enganxa-li això:
 
@@ -41,9 +41,10 @@ Obre l'assistent i enganxa-li això:
 Aquest és tot el procediment. L'assistent llegeix aquest repositori i fa la resta.
 Només tres coses són teves:
 
-1. **Un clic dins de Live**, quan t'ho demani: Preferències → Link, Tempo & MIDI →
-   tria **Alberton MCP** en un slot lliure de Control Surface (Input i Output:
-   **None**).
+1. **Obre Live i fes-hi un clic**, quan t'ho demani: Preferències → Link, Tempo & MIDI
+   → tria **Alberton MCP** en un slot lliure de Control Surface (Input i Output:
+   **None**). Live només busca Remote Scripts en arrencar, així que si ja el tenies
+   obert quan ha arribat l'script, reinicia'l primer.
 2. **Aprova** el que l'assistent proposi executar, si t'ho pregunta.
 3. **Prem Cmd-S** (Ctrl-S a Windows) quan t'agradi el que sents. No es desa mai res
    per tu — el set sempre és teu, de conservar o descartar.

@@ -24,7 +24,8 @@ You need:
   if you are the first),
 - an **AI assistant on that computer that can run commands and connect to MCP
   servers** — Claude Desktop or Claude Code, ChatGPT Desktop with Codex, or similar,
-- about **ten minutes**, with Live open.
+- about **ten minutes**, with **Live closed** — you will open it when the script is
+  in place.
 
 Open your assistant and paste this:
 
@@ -38,8 +39,10 @@ Open your assistant and paste this:
 That is the whole procedure. The assistant reads this repository and does the rest.
 Only three things are yours:
 
-1. **One click inside Live**, when asked: Preferences → Link, Tempo & MIDI → choose
-   **Alberton MCP** in a free Control Surface slot (Input and Output: **None**).
+1. **Open Live, then one click inside it**, when asked: Preferences → Link, Tempo &
+   MIDI → choose **Alberton MCP** in a free Control Surface slot (Input and Output:
+   **None**). Live looks for Remote Scripts only at startup, so if it was already
+   running when the script arrived, restart it first.
 2. **Approve** what your assistant proposes to run, if it asks.
 3. **Press Cmd-S** (Ctrl-S on Windows) when you like what you hear. Nothing is ever
    saved for you — your set is always yours to keep or discard.
