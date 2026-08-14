@@ -33,8 +33,8 @@ Open your assistant and paste this:
 > https://github.com/Alberton-projects/alberton_mcp-for-live — guide me step by step
 > from scratch on this computer, including connecting yourself to the server over
 > MCP. Explain each step in plain words before doing it. When everything is
-> connected, create a 4-beat MIDI clip with a C major arpeggio in the Ableton set I
-> have open, so we both know it works.
+> connected, create a 4-beat MIDI clip with a C major arpeggio in my Ableton set, so
+> we both know it works.
 
 That is the whole procedure. The assistant reads this repository and does the rest.
 Only three things are yours:

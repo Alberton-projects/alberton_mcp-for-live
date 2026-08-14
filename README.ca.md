@@ -35,8 +35,8 @@ Obre l'assistent i enganxa-li això:
 > https://github.com/Alberton-projects/alberton_mcp-for-live — guia'm pas a pas des
 > de zero en aquest ordinador, incloent-hi connectar-te tu mateix al servidor per
 > MCP. Explica cada pas en paraules planes abans de fer-lo. Quan tot estigui
-> connectat, crea un clip MIDI de 4 beats amb un arpegi de Do major al set d'Ableton
-> que tinc obert, perquè tots dos sapiguem que funciona.
+> connectat, crea un clip MIDI de 4 beats amb un arpegi de Do major al meu set
+> d'Ableton, perquè tots dos sapiguem que funciona.
 
 Aquest és tot el procediment. L'assistent llegeix aquest repositori i fa la resta.
 Només tres coses són teves:
