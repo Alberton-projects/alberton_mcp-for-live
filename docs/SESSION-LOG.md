@@ -172,6 +172,12 @@ standing elsewhere.
   command with no stated working directory — the `cp: __init__.py: No such file or
   directory` from the clean-install rehearsal, fixed for the real script in `32ca1e4` —
   and a "Restart Live" first step, the wording corrected in `2b5c232`.
+- `afbd392` The **prompt now carries the handover**, and asks for a beat. The prompt is
+  the only thing the assistant receives; the three manual steps live in the README, which
+  only the musician reads — so it described a seamless errand with no hint that there is a
+  moment where it must stop and hand back. The demonstration became an 8-bar 4/4 beat on
+  drums, bass and minimal percussion instead of a C major arpeggio, with "confirm you can
+  read my set" keeping the wiring test the arpeggio used to be.
 
 The lesson is about method, not wording: a phrasing fix is finished when the phrase is
 gone from the repository, not when the file that prompted it reads correctly. Both were
