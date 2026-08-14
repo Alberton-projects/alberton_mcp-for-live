@@ -158,6 +158,25 @@ written to a frozen track. None of them were predicted.
 
 ## Log
 
+### 2026-08-14 — finishing the sweep the previous entry started
+
+A review of the unpushed commits, before pushing them. The fix of 2026-08-11 was right
+and incomplete: it corrected the two files it was aimed at and left the same claim
+standing elsewhere.
+
+- `ef0c73c` The **prompt the musician pastes** no longer claims Live is already open. It
+  ended with "the Ableton set I have open" — read at the one moment when it is not, three
+  lines under a requirement asking for Live closed. An assistant taking it literally would
+  restore the very order the previous commit removed.
+- `62d542a` Both defects had survived in **`tools/introspect/README.md`**: an install
+  command with no stated working directory — the `cp: __init__.py: No such file or
+  directory` from the clean-install rehearsal, fixed for the real script in `32ca1e4` —
+  and a "Restart Live" first step, the wording corrected in `2b5c232`.
+
+The lesson is about method, not wording: a phrasing fix is finished when the phrase is
+gone from the repository, not when the file that prompted it reads correctly. Both were
+found by grepping for the claim, not by re-reading the diff.
+
 ### 2026-08-11 — the install instruction had the order backwards
 
 Found while scripting a screen recording of the install: having to choose a shooting
