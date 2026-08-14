@@ -31,10 +31,11 @@ Open your assistant and paste this:
 
 > I want to install and use this:
 > https://github.com/Alberton-projects/alberton_mcp-for-live — guide me step by step
-> from scratch on this computer, including connecting yourself to the server over
-> MCP. Explain each step in plain words before doing it. When everything is
-> connected, create a 4-beat MIDI clip with a C major arpeggio in my Ableton set, so
-> we both know it works.
+> from scratch on this computer, explaining each step in plain words before you do
+> it. Live is closed right now: tell me when to open it and which Control Surface
+> slot to set — that part is mine. Then connect yourself to the server over MCP,
+> confirm you can read my set, and build me an 8-bar beat in 4/4 on three tracks —
+> drums, bass and minimal percussion — in melodic progressive electronica.
 
 That is the whole procedure. The assistant reads this repository and does the rest.
 Only three things are yours:

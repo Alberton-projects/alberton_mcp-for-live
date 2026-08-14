@@ -33,10 +33,12 @@ Obre l'assistent i enganxa-li això:
 
 > Vull instal·lar i fer servir això:
 > https://github.com/Alberton-projects/alberton_mcp-for-live — guia'm pas a pas des
-> de zero en aquest ordinador, incloent-hi connectar-te tu mateix al servidor per
-> MCP. Explica cada pas en paraules planes abans de fer-lo. Quan tot estigui
-> connectat, crea un clip MIDI de 4 beats amb un arpegi de Do major al meu set
-> d'Ableton, perquè tots dos sapiguem que funciona.
+> de zero en aquest ordinador, explicant cada pas en paraules planes abans de fer-lo.
+> Ara mateix tinc Live tancat: digues-me quan l'he d'obrir i quin slot de Control
+> Surface he de posar — aquesta part és meva. Després connecta't tu mateix al
+> servidor per MCP, comprova que pots llegir el meu set, i fes-me un beat de 8
+> compassos en 4/4 amb tres pistes — bateria, baix i percussions minimalistes —
+> d'electrònica progressiva melòdica.
 
 Aquest és tot el procediment. L'assistent llegeix aquest repositori i fa la resta.
 Només tres coses són teves:
