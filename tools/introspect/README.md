@@ -9,14 +9,19 @@ new Live versions.
 
 ## Install
 
+**Every command in this file is run from the repository root** — the folder you get
+from `git clone`, the one holding `README.md` and `docs/`. Not from this folder.
+
 ```
 DEST="$HOME/Music/Ableton/User Library/Remote Scripts/AlbertonIntrospect"
-mkdir -p "$DEST" && cp __init__.py impl.py "$DEST/"
+mkdir -p "$DEST" && cp tools/introspect/__init__.py \
+                      tools/introspect/impl.py "$DEST/"
 ```
 
 ## Run
 
-1. Restart Live (it only scans Remote Scripts at startup).
+1. Start Live — or restart it, if it was already running (it only scans Remote
+   Scripts at startup).
 2. Have a set open with at least: one MIDI track with an instrument and a clip with a few
    notes, and one audio track with a short clip. More variety = richer instance dump.
 3. Preferences → Link, Tempo & MIDI → any free Control Surface slot → `AlbertonIntrospect`
