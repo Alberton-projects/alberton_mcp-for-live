@@ -4,7 +4,8 @@ Project rules for this repository. Read on every session; keep it short.
 
 ## Where things are written down
 
-`docs/SESSION-LOG.md` is the index: current state, what is open, and what changed when.
+`docs/SESSION-LOG.md` is the index: current state, what is open, and what changed when (entries
+before 2026-08-06 are in `docs/history/`).
 Read it first. Reasoning and verified Live behaviours go in `docs/HANDOFF.md`, the spec
 in `docs/CONTRACT.md`, durable rules here.
 
