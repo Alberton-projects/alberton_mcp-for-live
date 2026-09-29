@@ -158,6 +158,14 @@ written to a frozen track. None of them were predicted.
 
 ## Log
 
+### 2026-09-29 — rules made mechanical
+
+`tools/check_rules.py` (+ tests) checks the vocabulary rule, English in code, the Remote
+Script's eleven ops and its 127.0.0.1 bind. CI (`.github/workflows/checks.yml`) runs pytest
+and the checks; a cloud SessionStart hook installs the server's dev dependencies and states
+that Live is not reachable. One test string in `degenerate_probe.py` is marked as deliberate.
+Nothing in the server or the Remote Script changed.
+
 ### 2026-08-14 — finishing the sweep the previous entry started
 
 A review of the unpushed commits, before pushing them. The fix of 2026-08-11 was right
