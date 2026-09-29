@@ -35,7 +35,7 @@ AWKWARD_NAMES = [
     ('json-ish', '{"op": "set", "path": "song"}'),
     ('newline', "first line\nsecond line"),
     ('tab and cr', "a\tb\rc"),
-    ('unicode', "Cançó · Ñandú · Ω≈ç√∫"),
+    ('unicode', "Cançó · Ñandú · Ω≈ç√∫"),  # rules: allow-non-english
     ('emoji', "🥁 kick 🎹 pad"),
     ('cjk', "ベース・トラック"),
     ('rtl', "مسار الجهير"),
